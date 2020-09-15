@@ -5,13 +5,14 @@ library(gridExtra)
 library(viridis)
 library(scales)
 library(pals)
+library(ggdendro)
 
 ##Load workspace with standardized data
-load("Workspace_StandardizedData")
+load("./Outputs/Workspaces/StandardizedData")
 
 
 ##viridis colors
-show_col(viridis_pal()(10))
+show_col(viridis_pal()(20))
 viridis_pal()(8)
 viridis_pal()(4)
 show_col(viridis_pal()(3))
@@ -19,6 +20,7 @@ show_col(ocean.curl(20))
 
 #pal colors
 pal.bands(ocean.curl)
+pal.bands(viridis)
 
 #order of levels for Species will be Cp, Hz, Px, Sf
 #re-ordering colors so the yellow is Cp
@@ -1072,10 +1074,10 @@ dev.off()
 
 
 #---------------------------------------------------
-### Fig. S3: Comparing mixtures to single most effective compound (Prediction 1f)
+### Fig. S3: Comparing mixtures to most effective singleton (Prediction 1e)
 #-------------------------------
 
-load("WS_FinalAnalysesforMS_Rel2Single")
+load("./Outputs/Workspaces/Pred1e_singletonsVSmix")
 
 
 #Big composite plot of significant and non-significant relationships
@@ -1084,6 +1086,7 @@ load("WS_FinalAnalysesforMS_Rel2Single")
 d.temp <- means.PW[which(means.PW$Species=="Cp" & means.PW$Richness >1),]
 p1 <- ggplot(d.temp, aes(Richness, exceeds)) +
   geom_jitter(height=0.05, width=0.3, col=pal[1], shape=symb[1], cex=4) +
+  stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
   scale_y_continuous(breaks=c(0, 0.5, 1), labels=c("0","","1"), limits = c(-0.1,1.1)) +
   scale_x_continuous(breaks=c(2,4,6,8,10), labels=c("2","4","6", "8", "10")) +
   labs(subtitle="(A)") +
@@ -1150,6 +1153,7 @@ p5
 d.temp <- means.DtP[which(means.DtP$Species=="Hz" & means.DtP$Richness >1),]
 p6 <- ggplot(d.temp, aes(Richness, exceeds)) +
   geom_jitter(height=0.05, width=0.3, col=pal[2], shape=symb[2], cex=4) +
+  stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
   scale_y_continuous(breaks=c(0, 0.5, 1), labels=c("0","","1"), limits = c(-0.1,1.1)) +
   scale_x_continuous(breaks=c(2,4,6,8,10), labels=c("2","4","6", "8", "10")) +
   labs(subtitle="(F)") +
@@ -1163,6 +1167,7 @@ p6
 d.temp <- means.DtP[which(means.DtP$Species=="Px" & means.DtP$Richness >1),]
 p7 <- ggplot(d.temp, aes(Richness, exceeds)) +
   geom_jitter(height=0.05, width=0.3, col=pal[3], shape=symb[3], cex=4) +
+  stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
   scale_y_continuous(breaks=c(0, 0.5, 1), labels=c("0","","1"), limits = c(-0.1,1.1)) +
   scale_x_continuous(breaks=c(2,4,6,8,10), labels=c("2","4","6", "8", "10")) +
   labs(subtitle="(G)") +
@@ -1272,6 +1277,7 @@ p14
 d.temp <- means.F[which(means.F$Fungi=="Penicillium" & means.F$Richness >1),]
 p15 <- ggplot(d.temp, aes(Richness, exceeds)) +
   geom_jitter(height=0.05, width=0.3, col=pal[3], shape=symb[3], cex=4) +
+  stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
   scale_y_continuous(breaks=c(0, 0.5, 1), labels=c("0","","1"), limits = c(-0.1,1.1)) +
   scale_x_continuous(breaks=c(2,4,6,8,10), labels=c("2","4","6", "8", "10")) +
   labs(subtitle="(O)") +
@@ -1378,9 +1384,10 @@ dev.off()
 
 
 cairo_pdf(height=23.76, width=21.6, family="sans",filename="FigS4_ProbBestSingle.pdf")
-grid.arrange(t1,p1,p2,p3,p4,t4,s1,t2,p5,p6,p7,p8,t4,s1,t3,p9,p10,p11,p12,t4,t5,l1,t6,l2, nrow=15, ncol=4, 
+grid.arrange(t1,p1,p2,p3,p4,t4,s1,t2,p5,p6,p7,p8,t4,s1,t3,p9,p10,p11,p12,t4,s1,t5,
+             p13,p14,p15,p16,t4,t6,l1,t7,l2, nrow=19, ncol=4, 
              widths=c(300,300,300,300),
-             heights=c(50, 300, 50,10,50,300,50,10,50,300,50,50,50,50,50), layout_matrix=lay)
+             heights=c(50,300,50,10,50,300,50,10,50,300,50,10,50,300,50,50,50,50,50), layout_matrix=lay)
 dev.off()
 
 
@@ -1390,8 +1397,7 @@ dev.off()
 ###Figure 3: effects of richness and SD on number of organisms affected 
 #------------------------------
 
-
-NumEffects.rich <- read.csv("NumEffects_2a.csv")
+load("./Outputs/Workspaces/Pred2a-2b_NumEffects")
 
 #simple plot
 plot(NumOrgAffected ~ jitter(Richness), data=NumEffects.rich)
@@ -1474,186 +1480,235 @@ dev.off()
 ## Figure 4: Effects of individual compounds, heatmaps
 #------------------------------
 
-d.temp <- read.csv("IndivComps.csv")
+load("./Outputs/Workspaces/FinalAnalyses_Pred2d&3a_IndivComps")
 
-#re-order levels in the way we want them for the figure
-d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Pht", "Phz", "Q", "H", "R",  "eCt", "Ct",
-                                          "GeA",  "SA", "GA", "FA", "pCA", "CA", "ChA"))
+#And we also need the distance matrix for compound structural similarities
+d.avg <- read.csv("./Outputs/Tables/CompoundDistances.csv")
+rownames(d.avg) <- d.avg$X
+d.avg <- d.avg[-1]
 
-#And also need to set diverging colors for heatmaps
+#Set diverging colors for heatmaps
 show_col(viridis_pal()(10))
-hm_high <- viridis_pal()(10)[1]
-hm_low <- viridis_pal()(10)[5]
+hm_high <- viridis_pal()(10)[5]
+hm_low <- viridis_pal()(10)[1]
 hm_mid = "gray95"
 
-#hm_high <- ocean.curl(20)[19]
-#hm_low <- ocean.curl(20)[2]
+#hm_high <- ocean.curl(20)[2]
+#hm_low <- ocean.curl(20)[19]
 #hm_mid = ocean.curl(3)[2]
 
-
-####The plots
 
 base_size <- 20
 theme_update(plot.subtitle = element_text(hjust = 0.5, vjust=-5)) #originally at hjust=0 and vjust=1
 
-#col <- d.temp$TxMoreRes.S
-#mycol <- rgb(0, 0, 255, max = 255, alpha = 0, names = "transparent")
-
-#for(i in 1:length(col)){
-# if(d.temp$TxMoreRes.S[i]==1){
-#      col[i] <- "Black"} else {
-#        if(d.temp$TxLessRes.S[i]==1){
-#          col[i] <- "Green" } else{
-#            col[i] <- mycol
-#          }
-#        }
-#}
-
-squares <- d.temp[which(d.temp$TxMoreRes.S==1 | d.temp$TxLessRes.S==1),]
-squares$x <- NA
-squares$y <- NA
-for (i in 1: length(squares$x)){
-  squares$x[i] <- which(levels(d.temp$Species)==squares$Species[i])
-  squares$y[i] <- which(levels(d.temp$Treatment)==squares$Treatment[i])
+#Make a function to create a character vector that indicates
+#significance level with stars based on p-value
+stars <- function(x){
+  if(x < 0.001 & !is.na(x)){
+    s <- "***"
+  }else{
+    if(x < 0.01 & x >= 0.001 & !is.na(x)){
+      s <- "**"
+    }else{
+      if (x < 0.05 & x >=0.01 & !is.na(x)){
+        s <- "*"
+      } else{
+        s <- NA
+      }
+    }
+  }
+  return (s)
 }
+
+stars <- Vectorize(stars)
+
+
+####The plots
+
+
+#The dendrogram
+
+hc <- hclust(as.dist(1-d.avg), method="complete")
+plot(as.dendrogram(hc), edgePar=list(col=4, lwd=2), horiz=TRUE, main="Avg Distance") 
+
+dend <- as.dendrogram(hc)
+dend_data <- dendro_data(dend)
+
+# Setup the data, so that the layout is inverted (this is more 
+# "clear" than simply using coord_flip())
+segment_data <- with(
+  segment(dend_data), 
+  data.frame(x = y, y = x, xend = yend, yend = xend))
+# Use the dendrogram label data to position the compound labels
+comp_pos_table <- with(
+  dend_data$labels, 
+  data.frame(y_center = x, comp = as.character(label), height = 1))
+
+# Limits for the vertical axes
+comp_axis_limits <- with(
+  comp_pos_table, 
+  c(min(y_center - 0.5 * height), max(y_center + 0.5 * height))
+) + 
+  0.1 * c(-1, 1) # extra spacing: 0.1
+
+
+
+
+# Dendrogram plot
+p.dendr <- ggplot(segment_data) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) + 
+  scale_x_reverse(position="top")+   #expand = c(0, 0.5)) + 
+  scale_y_continuous(breaks = comp_pos_table$y_center, limits = comp_axis_limits, 
+                     expand = c(0, 0), labels=c("Phloridzin", "Phloretin", "Rutin", 
+                            "Hyperin", "Quercetin", "Catechin", "Epicatechin",  
+                            "Gentistic Acid","Gallic Acid", "Syringic Acid",  
+                            "Chlorogenic Acid", "p-Coumaric Acid", "Caffeic Acid", 
+                            "Ferulic Acid")) + 
+  labs(x = "", y = "", colour = "", size = "") +
+  labs(subtitle="  \n    ", position="center") + 
+  #theme_void() + 
+  theme(axis.text.x = element_text(color="white"),
+        panel.grid.minor = element_blank(), axis.ticks.x=element_blank(),
+        panel.background= element_blank(),
+        panel.grid.major.y = element_line(color="gray90"),
+        panel.grid.major.x=element_blank())+
+        #, panel.grid.major = element_blank(),
+        #panel.grid.minor = element_blank(), axis.ticks = element_blank(),
+        #panel.background = element_blank()) +
+  theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,0), "cm"),
+        axis.text = element_text(size = 20)) 
+p.dendr
+
+
+
+#The heatmaps
+d.temp <- d.sum
+
+#re-order levels in the way we want them for the figure
+d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Phz", "Pht", "R", "H", "Q", "Ct",
+                                                     "eCt", "GeA", "GA", "SA", "ChA",
+                                                     "pCA", "CA", "FA"))
+
+d.temp <- mutate(d.temp, stars.PW=stars(PW.p))
+d.temp <- mutate(d.temp, stars.DtP=stars(DtP.p))
+d.temp <- mutate(d.temp, stars.S=stars(S.pval))
 
 p1 <- ggplot(d.temp, aes(x=Species, y=Treatment)) + 
   geom_tile(aes(fill = PropSurv.ST), colour = "white", size=0.25) + 
-  #geom_hline(yintercept=2.5) +
-  #geom_hline(yintercept=5.5) +
-  #geom_hline(yintercept=7.5) +
-  #geom_hline(yintercept=10.5) +
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
   scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide = "colourbar", name="", limits=c(0.2, 1.6)) +  
-  geom_rect(data=squares, size=0.5, fill=NA, colour="black",
-            aes(xmin=x - 0.5, xmax=x + 0.5, ymin=y - 0.5, ymax=y + 0.5))
-p1.b <- p1 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,0), "cm"),
+                       midpoint = 1, guide = "colourbar", name="", limits=c(0.2, 1.8)) +  
+  geom_text(aes(label=stars.S), col="white", size=6, vjust=0.7)
+p1.b <- p1 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
                    axis.text = element_text(size = 20)) +
   labs(subtitle="Survival\n   ", position="center") + 
   labs(x="", y="") +
-  scale_y_discrete(labels=c("Phloretin", "Phloridzin", "Quercetin", "Hyperin",
-                            "Rutin", "Epicatechin", "Catechin", "Gentistic Acid",
-                            "Syringic Acid", "Gallic Acid", "Ferulic Acid",
-                            "p-Coumaric Acid", "Caffeic Acid", "Chlorogenic Acid")) +
+  #scale_y_discrete(labels=c("Phloridzin", "Phloretin", "Rutin", "Hyperin",
+   #                         "Quercetin", "Catechin", "Epicatechin",  "Gentistic Acid",
+    #                        "Gallic Acid", "Syringic Acid",  "Chlorogenic Acid", 
+     #                       "p-Coumaric Acid", "Caffeic Acid", "Ferulic Acid")) +
   scale_x_discrete(position="top") +
-  theme(legend.position="bottom") +
-  guides(fill=guide_colorbar(barwidth=8, label=TRUE, ticks=TRUE))
+  theme(legend.position="", axis.text.y=element_blank(),axis.ticks.y = element_blank())
 p1.b
 
 
-squares <- d.temp[which(d.temp$TxMoreRes.DtP==1 | d.temp$TxLessRes.DtP==1),]
-squares$x <- NA
-squares$y <- NA
-for (i in 1: length(squares$x)){
-  squares$x[i] <- which(levels(d.temp$Species)==squares$Species[i])
-  squares$y[i] <- which(levels(d.temp$Treatment)==squares$Treatment[i])
-}
-
 p2 <- ggplot(d.temp, aes(x=Species, y=Treatment))  + 
   geom_tile(aes(fill = DtP.avg), colour = "white") + 
-  #geom_hline(yintercept=2.5) +
-  #geom_hline(yintercept=5.5) +
-  #geom_hline(yintercept=7.5) +
-  #geom_hline(yintercept=10.5) +
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
   scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide = "colourbar", name="") +
-  geom_rect(data=squares, size=0.5, fill=NA, colour="black",
-            aes(xmin=x - 0.5, xmax=x + 0.5, ymin=y - 0.5, ymax=y + 0.5))
+                       midpoint = 1, guide = "colourbar", name="", limits=c(0.2, 1.8)) +
+  geom_text(aes(label=stars.DtP), col="white", size=6, vjust=0.7)
 p2.b <- p2 +  theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
                     axis.text = element_text(size = 20),axis.text.y=element_blank(),
                     axis.ticks.y = element_blank()) +
   labs(subtitle="Development\nSpeed", x="", y="") +
   scale_x_discrete(position="top") +
-  theme(legend.position="bottom")+
-  guides(fill=guide_colorbar(barwidth=8))
-
+  theme(legend.position="")
 p2.b
 
 
 
-squares <- d.temp[which(d.temp$TxMoreRes.PW==1 | d.temp$TxLessRes.PW==1),]
-squares$x <- NA
-squares$y <- NA
-for (i in 1: length(squares$x)){
-  squares$x[i] <- which(levels(d.temp$Species)==squares$Species[i])
-  squares$y[i] <- which(levels(d.temp$Treatment)==squares$Treatment[i])
-}
-
 p3 <- ggplot(d.temp, aes(x=Species, y=Treatment)) + 
   geom_tile(aes(fill = PW.avg), colour = "white") + 
-  #geom_hline(yintercept=2.5) +
-  #geom_hline(yintercept=5.5) +
-  #geom_hline(yintercept=7.5) +
-  #geom_hline(yintercept=10.5) +
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
   scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide="colourbar", name="")  +
-  geom_rect(data=squares, size=0.5, fill=NA, colour="black",
-            aes(xmin=x - 0.5, xmax=x + 0.5, ymin=y - 0.5, ymax=y + 0.5))
+                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  +
+  geom_text(aes(label=stars.PW), col="white", size=6, vjust=0.7)
 p3.b <- p3 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
                    axis.text = element_text(size = 20),axis.text.y=element_blank(),
                    axis.ticks.y = element_blank()) +
   labs(subtitle="Pupal\nMass", x="", y="") +
   scale_x_discrete(position="top") +
-  theme(legend.position="bottom")+
-  guides(fill=guide_colorbar(barwidth=8))
+  theme(legend.position="")
 p3.b
 
 
-d.temp <- read.csv("IndivComps_F.csv")
-d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Pht", "Phz", "Q", "H", "R",  "eCt", "Ct",
-                                                     "GeA",  "SA", "GA", "FA", "pCA", "CA", "ChA"))
-squares <- d.temp[which(d.temp$TxMoreRes.F==1 | d.temp$TxLessRes.F==1),]
-squares$x <- NA
-squares$y <- NA
-for (i in 1: length(squares$x)){
-  squares$x[i] <- which(levels(d.temp$Fungi)==squares$Fungi[i])
-  squares$y[i] <- which(levels(d.temp$Treatment)==squares$Treatment[i])
-}
+d.temp <- d.sum.F
+d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Phz", "Pht", "R", "H", "Q", "Ct",
+                                                     "eCt", "GeA", "GA", "SA", "ChA",
+                                                     "pCA", "CA", "FA"))
+
+d.temp <- mutate(d.temp, stars.F=stars(F.p))
 
 p4 <- ggplot(d.temp, aes(x=Fungi, y=Treatment)) + 
   geom_tile(aes(fill = F.avg), colour = "white") + 
-  #geom_hline(yintercept=2.5) +
-  #geom_hline(yintercept=5.5) +
-  #geom_hline(yintercept=7.5) +
-  #geom_hline(yintercept=10.5) +
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
   scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide="colourbar", name="")  +
-  geom_rect(data=squares, size=0.5, fill=NA, colour="black",
-            aes(xmin=x - 0.5, xmax=x + 0.5, ymin=y - 0.5, ymax=y + 0.5))
+                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  +
+  geom_text(aes(label=stars.F), col="white", size=6, vjust=0.7)
 p4.b <- p4 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
                    axis.text = element_text(size = 20),axis.text.y=element_blank(),
                    axis.ticks.y = element_blank()) +
   labs(subtitle="Growth\nRate", x="", y="") +
   scale_x_discrete(position="top", labels=c("Bd", "C", "Pe", "Ss")) +
-  theme(legend.position="bottom")+
-  guides(fill=guide_colorbar(barwidth=8))
+  theme(legend.position="")
 p4.b
+
+
+#to get a legend
+p.temp <- ggplot(d.temp, aes(x=Fungi, y=Treatment)) + 
+  geom_tile(aes(fill = F.avg), colour = "white") + 
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) 
+  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
+                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  
+p.temp.b <- p.temp + theme(text = element_text(size = 20), plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"),
+                   axis.text = element_text(size = 20),axis.text.y=element_blank(),
+                   axis.ticks.y = element_blank()) +
+  labs(subtitle="Growth\nRate", x="", y="") +
+  scale_x_discrete(position="top", labels=c("Bd", "C", "Pe", "Ss")) +
+  theme(legend.position=c(0.5,0.4), legend.direction="horizontal")+
+  guides(fill=guide_colorbar(barwidth=35), ticks=TRUE)#hjust=200)
+p.temp.b
+l1 <- get_legend(p.temp.b)
+
+
 
 s1 <- segmentsGrob(x0 = 0.5, y0 = 0,
                    x1 = 0.5, y1 = 1, gp = gpar(col="darkslategray"))
 s2 <- segmentsGrob(x0 = 0, y0 = 0.5,
                    x1 = 1, y1 = 0.5, gp = gpar(col="darkslategray"))
-s3 <- segmentsGrob(x0 = 0.53, y0 = 0.5,
-                   x1 = 1, y1 = 0.5, gp = gpar(col="darkslategray"))
-t1 <- textGrob("                         Insects", gp=gpar(fontsize=25))
-t2 <- textGrob("Fungi", gp=gpar(fontsize=25))
+t1 <- textGrob("", gp=gpar(fontsize=25))
+t2 <- textGrob("Insects", gp=gpar(fontsize=25))
+t3 <- textGrob("Fungi", gp=gpar(fontsize=25))
 
-lay <- rbind(c(1,1,1,1,1,2,3),
-             c(4,5,5,5,5,5,5),  
-             c(6,7,8,9,10,11,12))  #plot, line, plot, line, plot, line, plot  
 
-tiff(height=528, width=795.2, filename="Fig4_IndivCompHeatmaps.tiff", type="cairo") #0.8*widths
-grid.arrange(t1,s1, t2,s3,s2,p1.b, s1,p2.b, s1, p3.b, s1, p4.b, nrow=3, ncol=7, 
-             widths=c(400,10,188,10,188,10,188),
-             heights=c(50,10,600), layout_matrix=lay)
+lay <- rbind(c(1,2,2,2,2,2,3,4),
+             c(1,5,5,5,5,5,5,5),  
+             c(6,7,8,9,10,11,12,13),   #plot, plot, line, plot, line, plot, line, plot  
+             c(1,rep(14, 7)))
+
+tiff(height=528, width=795.2, filename="Fig4d_IndivCompHeatmaps.tiff", type="cairo") #0.8*widths
+grid.arrange(t1,t2,s1,t3, s2,p.dendr, p1.b, s1,p2.b, s1, p3.b, s1, p4.b,l1, nrow=4, ncol=8, 
+             widths=c(350,188,10,188,10,188,10,188),
+             heights=c(50,10,600,100), layout_matrix=lay)
 dev.off()
+ 
 
 
-
-cairo_pdf(height=7.92, width=11.928, family="sans",filename="Fig4_IndivCompHeatmaps.pdf")
-grid.arrange(t1,s1, t2,s3,s2,p1.b, s1,p2.b, s1, p3.b, s1, p4.b, nrow=3, ncol=7, 
-             widths=c(400,10,188,10,188,10,188),
-             heights=c(50,10,600), layout_matrix=lay)
+cairo_pdf(height=7.92, width=11.928, family="sans",filename="Fig4d_IndivCompHeatmaps.pdf")
+grid.arrange(t1,t2,s1,t3, s2,p.dendr, p1.b, s1,p2.b, s1, p3.b, s1, p4.b,l1, nrow=4, ncol=8, 
+             widths=c(350,188,10,188,10,188,10,188),
+             heights=c(50,10,600,100), layout_matrix=lay)
 dev.off()
 
 #-----------------------------------------------------------------------

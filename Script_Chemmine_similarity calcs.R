@@ -1,16 +1,32 @@
-load("ChemDiversity.RData")  #saved outputs
-load("ChemDiversity_V2.RData")  #saved outputs
+#load("ChemDiversity.RData")  #saved outputs
+#load("ChemDiversity_V2.RData")  #saved outputs
 
 
-#source("http://bioconductor.org/biocLite.R") # Sources the biocLite.R installation script. 
-#biocLite("ChemmineR")
-#biocLite("fmcsR")
+#ChemmineR and fmcsR are bioconductor packages. They need to be sourced
+#from there--they are not available on the regular CRAN mirrors
+# See https://bioconductor.org/install/#install-bioconductor-packages
+
+#to first install, run...
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install()
+
+BiocManager::install(c("ChemmineR", "fmcsR"))
+
+
 library(ChemmineR) # Loads the package
 library(fmcsR) #add on package for Maximum Common Substructure (MCS) searching
 library(abind)  #For nice pasting together of matrices
 vignette("ChemmineR") #Opens this PDF manual from R 
-sdfset <- read.SDFset("2016PD_allphenolics.sdf.gz") 
-names <- read.csv("2016PD_phenolics CID list_with names.csv")
+
+#The compound structure data is stored as an SDF file from PubChem
+#Go to: https://pubchem.ncbi.nlm.nih.gov/
+#upload a list of identifiers for the compounds (e.g. CIDs) as csv file 
+#(I used the list in "Whitehead_et_al_CIDs" but took out header and names column)
+#then choose "push to entrez" then you can download the structure data as an sdf 
+#file with gz compression
+sdfset <- read.SDFset("Whitehead_et_al_structures.sdf.gz") 
+names <- read.csv("Whitehead_et_al_CIDs.csv")
 
 
 #Prune compound set to things we can get
@@ -20,7 +36,7 @@ names <- names[c(1:9, 12, 14, 18:20),]
 
 ##General ways to look at data
 plot(sdfset[1:9]) #plots structures in R, can't do them all at once
-sdf.visualize(sdfset) #opens window in browser to view structures in ChemMine online 
+#sdf.visualize(sdfset) #opens window in browser to view structures in ChemMine online 
 sdfid(sdfset) #see list of CIDs in sdfset
 propma <- data.frame(ID=names$Compound, MF=MF(sdfset), MW=MW(sdfset), atomcountMA(sdfset))
 datablock(sdfset) <- propma  #Assign matrix data to data block:
@@ -113,6 +129,17 @@ d.avg <- (d.fp + d.ap + d.mcs)/3
 #d.sub <- d.avg[c(1:9,12, 14, 18:20),c(1:9,12, 14, 18:20)]
 d.sub <- d.avg
 
+
+#Plot as dendrogram
+hc <- hclust(as.dist(1-d.avg), method="complete")
+plot(as.dendrogram(hc), edgePar=list(col=4, lwd=2), horiz=TRUE, main="Average") 
+
+
+#save distance matrix for dendrogram for figures
+colnames(d.avg) <- names$Compound
+rownames(d.avg) <- names$Compound
+
+write.csv(d.avg, "./Outputs/Tables/CompoundDistances.csv")
 
 
 
