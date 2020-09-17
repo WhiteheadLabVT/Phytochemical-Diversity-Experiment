@@ -20,8 +20,8 @@ library(sjstats) #for ICC (intraclass correlation coefficient) calcs
 #-----------------------------
 
 #load data
-d.rich <- read.csv("Whitehead_et_al_Richness.csv")  
-d.even <- read.csv("Whitehead_et_al_Evenness.csv")
+d.rich <- read.csv("Whitehead_et_al_Insects.csv")  
+d.even <- read.csv("Whitehead_et_al_Insects_Evenness.csv")
 d.fungi <- read.csv("Whitehead_et_al_Fungi.csv")
 
 d.rich[c(1:3, 5:6, 8, 11)] <- lapply(d.rich[c(1:3, 5:6, 8, 11)], factor)
@@ -672,7 +672,6 @@ hist(d.fungi2$dAbs.ST)
 d.temp <- filter (d.fungi2, Treatment != "DMSO")
 m1.all.f <- lmer(dAbs.ST ~ SD*Richness*Fungi + (1|Treatment) + (1|Plate), 
                    data = d.temp, na.action=na.fail, REML="FALSE")
-  #singular fit error here, goes away if you take out plate but results remain basically the same
 d1.all.f <- dredge(m1.all.f)
 d1.all.f  #top model contains all factors and dAIC to next best is 36.12, retain all
 summary(d1.all.f)
@@ -739,10 +738,8 @@ d1   #no effect of richness at high SD
 #---- Colletotrichum 
 
 d.temp <- filter (d.fungi2, Fungi=="Collet" & Treatment != "DMSO")
-#took out plate in these models due to convergence warnings, but results are the 
-#same either way
-m1.B <- lmer(dAbs.ST ~ SD*Richness + (1|Treatment), data = d.temp)  
-m2.B <- lmer(dAbs.ST ~ SD + Richness + (1|Treatment), data = d.temp)
+m1.B <- lmer(dAbs.ST ~ SD*Richness + (1|Treatment) + (1|Plate), data = d.temp)  
+m2.B <- lmer(dAbs.ST ~ SD + Richness + (1|Treatment)+ (1|Plate), data = d.temp)
 d1 <- drop1(m1.B, test="Chisq")
 d2 <- drop1(m2.B, test="Chisq")  #no effects
 d1
@@ -759,10 +756,8 @@ abline(lm(dAbs.ST ~ Richness, data=d.temp))
 #---- Penicillium  
 
 d.temp <- filter (d.fungi2, Fungi=="Penicillium" & Treatment != "DMSO")
-#Took out plate from these models also due to singular fit errors, results
-#do not change either way
-m1.B <- lmer(dAbs.ST ~ SD*Richness + (1|Treatment), data = d.temp)
-m2.B <- lmer(dAbs.ST ~ SD + Richness + (1|Treatment), data = d.temp)
+m1.B <- lmer(dAbs.ST ~ SD*Richness + (1|Treatment)+ (1|Plate), data = d.temp)
+m2.B <- lmer(dAbs.ST ~ SD + Richness + (1|Treatment)+ (1|Plate), data = d.temp)
 d1 <- drop1(m1.B, test="Chisq")
 d2 <- drop1(m2.B, test="Chisq")  
 d1
@@ -778,8 +773,8 @@ abline(lm(dAbs.ST ~ Richness, data=d.temp))
 
 #---- Sclerotinia 
 d.temp <- filter (d.fungi2, Fungi=="Sclerotinia" & Treatment != "DMSO")
-m1.B <- lmer(dAbs.ST ~ SD*Richness + (1|Treatment), data = d.temp)
-m2.B <- lmer(dAbs.ST ~ SD + Richness + (1|Treatment), data = d.temp)
+m1.B <- lmer(dAbs.ST ~ SD*Richness + (1|Treatment)+ (1|Plate), data = d.temp)
+m2.B <- lmer(dAbs.ST ~ SD + Richness + (1|Treatment)+ (1|Plate), data = d.temp)
 d1 <- drop1(m1.B, test="Chisq")
 d2 <- drop1(m2.B, test="Chisq")  
 d1  #marginal interaction
