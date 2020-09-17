@@ -7,9 +7,6 @@ library(scales)
 library(pals)
 library(ggdendro)
 
-##Load workspace with standardized data
-load("./Outputs/Workspaces/StandardizedData")
-
 
 ##viridis colors
 show_col(viridis_pal()(20))
@@ -40,10 +37,6 @@ alpha_p <- 0.5
 #set transparency for boxplots
 alpha_b <- 0.8
 
-
-#Can also consider color options
-#low = "darkred", mid = "gray95", high = "steelblue"
-
 #and color for any plots with just one 
 dot_col <- viridis_pal()(1)
 
@@ -61,6 +54,9 @@ get_legend<-function(myggplot){
 #----------------------------------------------------------------------------------
 ###Figure 1A-D: A big composite fig of richness effects on performance and fungal growth
 #-----------------------------
+
+##Load workspace with standardized data
+load("./Outputs/Workspaces/StandardizedData")
 
 #For Pupal Weights
 d.temp <- filter (d.rich, Treatment != "C", !is.na(Pupal.weight.ST))
@@ -191,7 +187,7 @@ p.temp.b
 t1 <- textGrob("Insect Species (Plots A, B, C)", gp=gpar(fontsize=35))
 t2 <- textGrob("Fungal Species (Plot D)", gp=gpar(fontsize=35))
 
-tiff(height=1250, width=1000, filename="Fig1_Richness.tiff", type="cairo")
+tiff(height=1250, width=1000, filename="./Outputs/Figures/Fig1_Richness.tiff", type="cairo")
 lay <- rbind(c(1,2),  #graphs A+B
              c(3,4), #graphs C+D
              c(5,5), #legend label 1
@@ -203,7 +199,7 @@ grid.arrange(p1.b, p2.b, p3.b, p4.b, t1, l1, t2, l2, nrow=6, ncol=2, widths=c(50
 dev.off()
 
 
-cairo_pdf(height=18.75, width=15, family="sans",filename="Fig1_Richness.pdf")
+cairo_pdf(height=18.75, width=15, family="sans",filename="./Outputs/Figures/Fig1_Richness.pdf")
 grid.arrange(p1.b, p2.b, p3.b, p4.b, t1, l1, t2, l2, nrow=6, ncol=2, widths=c(500, 500),
              heights=c(500, 500, 50, 75, 50, 75), layout_matrix=lay)
 dev.off()
@@ -213,6 +209,8 @@ dev.off()
 ###Figure 2A-D: A big composite fig of SD effects on performance and fungal growth
 #----------------------------
 
+##Load workspace with standardized data
+load("./Outputs/Workspaces/StandardizedData")
 
 #For Pupal Weights
 d.temp <- filter (d.rich, Treatment != "C", !is.na(Pupal.weight.ST))
@@ -353,7 +351,7 @@ p.temp.b
 t1 <- textGrob("Insect Species (Plots A, B, C)", gp=gpar(fontsize=35))
 t2 <- textGrob("Fungal Species (Plot D)", gp=gpar(fontsize=35))
 
-tiff(height=1250, width=1000, filename="Fig2_SD.tiff", type="cairo")
+tiff(height=1250, width=1000, filename="./Outputs/Figures/Fig2_SD.tiff", type="cairo")
 lay <- rbind(c(1,2),  #graphs A+B
              c(3,4), #graphs C+D
              c(5,5), #legend label 1
@@ -365,16 +363,302 @@ grid.arrange(p1.b, p2.b, p3.b, p4.b, t1, l1, t2, l2, nrow=6, ncol=2, widths=c(50
 dev.off()
 
 
-cairo_pdf(height=18.75, width=15, family="sans",filename="Fig2_SD.pdf")
+cairo_pdf(height=18.75, width=15, family="sans",filename="./Outputs/Figures/Fig2_SD.pdf")
 grid.arrange(p1.b, p2.b, p3.b, p4.b, t1, l1, t2, l2, nrow=6, ncol=2, widths=c(500, 500),
              heights=c(500, 500, 50, 75, 50, 75), layout_matrix=lay)
 dev.off()
 
+#-----------------------------------------------------
+###Figure 3: effects of richness and SD on number of organisms affected 
+#------------------------------
+
+load("./Outputs/Workspaces/FinalAnalyses_Pred2a-2b_NumEffects")
+
+#simple plot
+plot(NumOrgAffected ~ jitter(Richness), data=NumEffects.rich)
+abline(lm(NumOrgAffected ~ Richness, data=NumEffects.rich))
+
+#pretty plot
+d.temp <- NumEffects.rich
+p1 <- ggplot(d.temp, aes(x=Richness, y=NumOrgAffected)) +
+  geom_jitter(width=0.15, height=0.15, cex=4, col=pal[2]) +
+  geom_smooth(method="lm", col="#6B244C", aes(group=1)) +
+  ylab("Numb. Consumers Affected") + xlab("Richness") +
+  labs(subtitle="(A)") +
+  scale_x_continuous(breaks=c(1,2,4,6,8,10), labels=c("1", "2","4","6", "8", "10")) +
+  theme(text = element_text(size = 35)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+p1
+
+d.temp <- NumEffects.rich
+d.temp$SD <- factor(d.temp$SD, levels=c("L", "M", "H"))
+p2 <- ggplot(d.temp, aes(x=SD, y=NumOrgAffected)) +
+  geom_jitter(width=0.15, height=0.15, cex=4, col=pal[2]) +
+  geom_boxplot(width=0.75, notch = FALSE, aes(group = cut_width(SD, 0.5), alpha = alpha_b), outlier.shape = NA) +
+  ylab("") + xlab("Structural Diversity") +
+  labs(subtitle="(B)") +
+  scale_x_discrete(breaks=c("L", "M", "H"), labels=c("low", "med", "high")) +
+  scale_y_continuous(limits=c(2,7.8), breaks=c(2,3,4,5,6,7)) +
+  theme(text = element_text(size = 35)) +
+  annotate(geom = "text", x = 1, y = 7.6, label = "A", size=8) +
+  annotate(geom = "text", x = 2, y = 7.6, label = "B", size=8) +
+  annotate(geom = "text", x = 3, y = 7.6, label = "B", size=8) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.position = "none")
+p2
+
+tiff(height=500, width=1000, filename="./Outputs/Figures/Fig3_NumbEffects.tiff", type="cairo")
+grid.arrange(p1, p2, nrow=1, ncol=2)
+dev.off()
+
+cairo_pdf(height=7.5, width=15, family="sans",filename="./Outputs/Figures/Fig3_NumbEffects.pdf")
+grid.arrange(p1, p2, nrow=1, ncol=2)
+dev.off()
+
+#---------------------------------------------------------------------------
+## Figure 4: Effects of individual compounds, heatmaps
+#------------------------------
+
+load("./Outputs/Workspaces/FinalAnalyses_Pred2d&3a_IndivComps")
+
+#And we also need the distance matrix for compound structural similarities
+d.avg <- read.csv("./Outputs/Tables/CompoundDistances.csv")
+rownames(d.avg) <- d.avg$X
+d.avg <- d.avg[-1]
+
+#Set diverging colors for heatmaps
+show_col(viridis_pal()(10))
+hm_high <- viridis_pal()(10)[6]
+hm_low <- viridis_pal()(10)[1]
+hm_mid = "gray95"
+
+#hm_high <- ocean.curl(20)[2]
+#hm_low <- ocean.curl(20)[19]
+#hm_mid = ocean.curl(3)[2]
+
+
+base_size <- 20
+theme_update(plot.subtitle = element_text(hjust = 0.5, vjust=-5)) #originally at hjust=0 and vjust=1
+
+#Make a function to create a character vector that indicates
+#significance level with stars based on p-value
+stars <- function(x){
+  if(x < 0.001 & !is.na(x)){
+    s <- "***"
+  }else{
+    if(x < 0.01 & x >= 0.001 & !is.na(x)){
+      s <- "**"
+    }else{
+      if (x < 0.05 & x >=0.01 & !is.na(x)){
+        s <- "*"
+      } else{
+        s <- NA
+      }
+    }
+  }
+  return (s)
+}
+
+stars <- Vectorize(stars)
+
+
+####The plots
+
+
+#The dendrogram
+
+hc <- hclust(as.dist(1-d.avg), method="complete")
+plot(as.dendrogram(hc), edgePar=list(col=4, lwd=2), horiz=TRUE, main="Avg Distance") 
+
+dend <- as.dendrogram(hc)
+dend_data <- dendro_data(dend)
+
+# Setup the data, so that the layout is inverted (this is more 
+# "clear" than simply using coord_flip())
+segment_data <- with(
+  segment(dend_data), 
+  data.frame(x = y, y = x, xend = yend, yend = xend))
+# Use the dendrogram label data to position the compound labels
+comp_pos_table <- with(
+  dend_data$labels, 
+  data.frame(y_center = x, comp = as.character(label), height = 1))
+
+# Limits for the vertical axes
+comp_axis_limits <- with(
+  comp_pos_table, 
+  c(min(y_center - 0.5 * height), max(y_center + 0.5 * height))
+) + 
+  0.1 * c(-1, 1) # extra spacing: 0.1
+
+
+
+
+# Dendrogram plot
+p.dendr <- ggplot(segment_data) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) + 
+  scale_x_reverse(position="top")+   #expand = c(0, 0.5)) + 
+  scale_y_continuous(breaks = comp_pos_table$y_center, limits = comp_axis_limits, 
+                     expand = c(0, 0), labels=c("Phloridzin", "Phloretin", "Rutin", 
+                                                "Hyperin", "Quercetin", "Catechin", "Epicatechin",  
+                                                "Gentistic Acid","Gallic Acid", "Syringic Acid",  
+                                                "Chlorogenic Acid", "p-Coumaric Acid", "Caffeic Acid", 
+                                                "Ferulic Acid")) + 
+  labs(x = "", y = "", colour = "", size = "") +
+  labs(subtitle="  \n    ", position="center") + 
+  #theme_void() + 
+  theme(axis.text.x = element_text(color="white"),
+        panel.grid.minor = element_blank(), axis.ticks.x=element_blank(),
+        panel.background= element_blank(),
+        panel.grid.major.y = element_line(color="gray90"),
+        panel.grid.major.x=element_blank())+
+  #, panel.grid.major = element_blank(),
+  #panel.grid.minor = element_blank(), axis.ticks = element_blank(),
+  #panel.background = element_blank()) +
+  theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,0), "cm"),
+        axis.text = element_text(size = 20)) 
+p.dendr
+
+
+
+#The heatmaps
+d.temp <- d.sum
+
+#re-order levels in the way we want them for the figure
+d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Phz", "Pht", "R", "H", "Q", "Ct",
+                                                     "eCt", "GeA", "GA", "SA", "ChA",
+                                                     "pCA", "CA", "FA"))
+
+d.temp <- mutate(d.temp, stars.PW=stars(PW.p))
+d.temp <- mutate(d.temp, stars.DtP=stars(DtP.p))
+d.temp <- mutate(d.temp, stars.S=stars(S.pval))
+
+p1 <- ggplot(d.temp, aes(x=Species, y=Treatment)) + 
+  geom_tile(aes(fill = PropSurv.ST), colour = "white", size=0.25) + 
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
+  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
+                       midpoint = 1, guide = "colourbar", name="", limits=c(0.2, 1.8)) +  
+  geom_text(aes(label=stars.S), col="white", size=6, vjust=0.7)
+p1.b <- p1 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
+                   axis.text = element_text(size = 20)) +
+  labs(subtitle="Survival\n   ", position="center") + 
+  labs(x="", y="") +
+  #scale_y_discrete(labels=c("Phloridzin", "Phloretin", "Rutin", "Hyperin",
+  #                         "Quercetin", "Catechin", "Epicatechin",  "Gentistic Acid",
+  #                        "Gallic Acid", "Syringic Acid",  "Chlorogenic Acid", 
+  #                       "p-Coumaric Acid", "Caffeic Acid", "Ferulic Acid")) +
+  scale_x_discrete(position="top") +
+  theme(legend.position="", axis.text.y=element_blank(),axis.ticks.y = element_blank())
+p1.b
+
+
+p2 <- ggplot(d.temp, aes(x=Species, y=Treatment))  + 
+  geom_tile(aes(fill = DtP.avg), colour = "white") + 
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
+  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
+                       midpoint = 1, guide = "colourbar", name="", limits=c(0.2, 1.8)) +
+  geom_text(aes(label=stars.DtP), col="white", size=6, vjust=0.7)
+p2.b <- p2 +  theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
+                    axis.text = element_text(size = 20),axis.text.y=element_blank(),
+                    axis.ticks.y = element_blank()) +
+  labs(subtitle="Development\nSpeed", x="", y="") +
+  scale_x_discrete(position="top") +
+  theme(legend.position="")
+p2.b
+
+
+
+p3 <- ggplot(d.temp, aes(x=Species, y=Treatment)) + 
+  geom_tile(aes(fill = PW.avg), colour = "white") + 
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
+  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
+                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  +
+  geom_text(aes(label=stars.PW), col="white", size=6, vjust=0.7)
+p3.b <- p3 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
+                   axis.text = element_text(size = 20),axis.text.y=element_blank(),
+                   axis.ticks.y = element_blank()) +
+  labs(subtitle="Pupal\nMass", x="", y="") +
+  scale_x_discrete(position="top") +
+  theme(legend.position="")
+p3.b
+
+
+d.temp <- d.sum.F
+d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Phz", "Pht", "R", "H", "Q", "Ct",
+                                                     "eCt", "GeA", "GA", "SA", "ChA",
+                                                     "pCA", "CA", "FA"))
+
+d.temp <- mutate(d.temp, stars.F=stars(F.p))
+
+p4 <- ggplot(d.temp, aes(x=Fungi, y=Treatment)) + 
+  geom_tile(aes(fill = F.avg), colour = "white") + 
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
+  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
+                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  +
+  geom_text(aes(label=stars.F), col="white", size=6, vjust=0.7)
+p4.b <- p4 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
+                   axis.text = element_text(size = 20),axis.text.y=element_blank(),
+                   axis.ticks.y = element_blank()) +
+  labs(subtitle="Growth\nRate", x="", y="") +
+  scale_x_discrete(position="top", labels=c("Bd", "C", "Pe", "Ss")) +
+  theme(legend.position="")
+p4.b
+
+
+#to get a legend
+p.temp <- ggplot(d.temp, aes(x=Fungi, y=Treatment)) + 
+  geom_tile(aes(fill = F.avg), colour = "white") + 
+  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) 
+  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
+                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  
+p.temp.b <- p.temp + theme(text = element_text(size = 20), plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"),
+                           axis.text = element_text(size = 20),axis.text.y=element_blank(),
+                           axis.ticks.y = element_blank()) +
+  labs(subtitle="Growth\nRate", x="", y="") +
+  scale_x_discrete(position="top", labels=c("Bd", "C", "Pe", "Ss")) +
+  theme(legend.position=c(0.5,0.4), legend.direction="horizontal")+
+  guides(fill=guide_colorbar(barwidth=35), ticks=TRUE)#hjust=200)
+p.temp.b
+l1 <- get_legend(p.temp.b)
+
+
+
+s1 <- segmentsGrob(x0 = 0.5, y0 = 0,
+                   x1 = 0.5, y1 = 1, gp = gpar(col="darkslategray"))
+s2 <- segmentsGrob(x0 = 0, y0 = 0.5,
+                   x1 = 1, y1 = 0.5, gp = gpar(col="darkslategray"))
+t1 <- textGrob("", gp=gpar(fontsize=25))
+t2 <- textGrob("Insects", gp=gpar(fontsize=25))
+t3 <- textGrob("Fungi", gp=gpar(fontsize=25))
+
+
+lay <- rbind(c(1,2,2,2,2,2,3,4),
+             c(1,5,5,5,5,5,5,5),  
+             c(6,7,8,9,10,11,12,13),   #plot, plot, line, plot, line, plot, line, plot  
+             c(1,rep(14, 7)))
+
+tiff(height=528, width=795.2, filename="./Outputs/Figures/Fig4_IndivCompHeatmaps.tiff", type="cairo") #0.8*widths
+grid.arrange(t1,t2,s1,t3, s2,p.dendr, p1.b, s1,p2.b, s1, p3.b, s1, p4.b,l1, nrow=4, ncol=8, 
+             widths=c(350,188,10,188,10,188,10,188),
+             heights=c(50,10,600,100), layout_matrix=lay)
+dev.off()
+
+
+
+cairo_pdf(height=7.92, width=11.928, family="sans",filename="./Outputs/Figures/Fig4_IndivCompHeatmaps.pdf")
+grid.arrange(t1,t2,s1,t3, s2,p.dendr, p1.b, s1,p2.b, s1, p3.b, s1, p4.b,l1, nrow=4, ncol=8, 
+             widths=c(350,188,10,188,10,188,10,188),
+             heights=c(50,10,600,100), layout_matrix=lay)
+dev.off()
 
 
 #------------------------------------------
 # Fig. S1:Composite fig of all places that there are significant effects of richness or SD
 #-------------------------------
+
+##Load workspace with standardized data
+load("./Outputs/Workspaces/StandardizedData")
 
 ######(A) Richness effects on Spodoptera survival
 
@@ -464,324 +748,25 @@ p3.b
 
 #Make the composite fig
 
-tiff(height=500, width=1600, filename="FigS1_IndivEffects.tiff", type="cairo")
+tiff(height=500, width=1600, filename="./Outputs/Figures/FigS1_IndivEffects.tiff", type="cairo")
 lay <- rbind(c(1,2,3))  #graphs
 grid.arrange(p1.b, p2.b, p3.b, nrow=1, ncol=3, widths=c(500, 500, 600),
              heights=c(500), layout_matrix=lay)
 dev.off()
 
 
-cairo_pdf(height=6.25, width=20, family="sans",filename="FigS1_IndivEffects.pdf")
+cairo_pdf(height=6.25, width=20, family="sans",filename="./Outputs/Figures/FigS1_IndivEffects.pdf")
 lay <- rbind(c(1,2,3))  #graphs
 grid.arrange(p1.b, p2.b, p3.b, nrow=1, ncol=3, widths=c(500, 500, 600),
              heights=c(500), layout_matrix=lay)
 dev.off()
-
-
-
-
-##-----------------------------------------------
-##  Fig. S5: Evenness effects on performance
-##------------------------------
-
-
-#For Pupal Weights
-d.temp <- filter (d.even, Treatment != "C", !is.na(Pupal.weight.ST))
-
-p1 <- ggplot(d.temp, aes(x=Evenness, y=Pupal.weight.ST)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.03, aes(shape=Species, col=Species), alpha=alpha_p) +
-  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = alpha_b), outlier.shape = NA)
-
-p1.b <- p1 + ylab("Pupal Mass") + xlab("") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
-  scale_shape_manual(values = symb) + 
-  scale_color_manual(values = pal) +
-  theme(legend.position="none")+
-  labs(subtitle="(A)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
-
-p1.b
-
-
-#For Dev Speed
-d.temp <- filter (d.even, Treatment != "C", !is.na(Days.to.pupation.ST.inv))
-
-p2 <- ggplot(d.temp, aes(x=Evenness, y=Days.to.pupation.ST.inv)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.03, height=0.03, aes(shape=Species, col=Species), alpha=alpha_p) +
-  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = alpha_b), outlier.shape = NA)
-
-p2.b <- p2 + ylab("Development Speed") + xlab("Evenness") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
-  scale_shape_manual(values = symb) + 
-  scale_color_manual(values = pal) +
-  theme(legend.position="none")+
-  labs(subtitle="(B)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
-p2.b
-
-#For Survival
-d.temp <- filter (d.even.PS, Treatment != "C", !is.na(PropSurv.ST))
-p3 <- ggplot(d.temp, aes(x=Evenness, y=PropSurv.ST)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.03, aes(shape=Species, col=Species), alpha=alpha_p) +
-  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = alpha_b), outlier.shape = NA)
-
-p3.b <- p3 + ylab("Survival") + xlab("") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
-  scale_shape_manual(values = symb) + 
-  scale_color_manual(values = pal) +
-  theme(legend.position="none") +
-  labs(subtitle="(C)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
-p3.b
-
-#To get a legend for insects
-d.temp <- filter (d.rich, Treatment != "C", !is.na(Pupal.weight.ST))
-labs <- c(expression(paste(italic(" C.pomonella   "))),
-          expression(paste(italic(" H. zea   "))),
-          expression(paste(italic(" P. xylostella  "))), 
-          expression(paste(italic(" S. frugiperda  "))))
-
-p.temp <- ggplot(d.temp, aes(x=Richness, y=Pupal.weight.ST)) +
-  geom_jitter(width=0.3, height=0.3, aes(shape=Species, col=Species), size=6)
-
-p.temp.b <- p.temp + ylab("Standardized Pupal Weight") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  scale_shape_manual(values = symb, labels=labs) + 
-  scale_color_manual(values = pal, labels=labs) +
-  theme(legend.position="bottom", legend.title=element_blank())+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-l1 <- get_legend(p.temp.b)
-p.temp.b
-
-
-
-#Make the composite fig
-
-tiff(height=550, width=1500, filename="FigS3_Evenness.tiff", type="cairo")
-lay <- rbind(c(1,2,3),  #graphs
-             c(4,4,4)) #legend
-grid.arrange(p1.b, p2.b, p3.b, l1, nrow=2, ncol=3, widths=c(500, 500, 500),
-             heights=c(500, 50), layout_matrix=lay)
-dev.off()
-
-
-cairo_pdf(height=7.33, width=20, family="sans",filename="FigS3_Evenness.pdf")
-lay <- rbind(c(1,2,3),  #graphs
-             c(4,4,4)) #legend
-grid.arrange(p1.b, p2.b, p3.b, l1, nrow=2, ncol=3, widths=c(500, 500, 500),
-             heights=c(500, 50), layout_matrix=lay)
-dev.off()
-
-
-
-
-#----------------------------------------------
-#  Fig. S6: Composite fig of all places there are significant effects of evenness 
-#     or SD on individual herbivore species and metrics
-#-------------------------------
-
-## (A)  Evenness effects on Sf male pupal weight
-
-d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Sf" & d.even$Sex=="m"),]
-p1 <- ggplot(d.temp, aes(x=Evenness, y=Pupal.weight.ST)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.03, color=pal[4], shape=symb[4], cex=2) +
-  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = 0.8), outlier.shape = NA)
-p1b <- p1 + ylab("M Pupal Weight") +
-  xlab("")+
-  geom_smooth(method="lm", col=pal[4], aes(group=1), fill=NA) +
-  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
-  #scale_y_continuous(breaks=c(0, 0.2, 0.4, 0.6, 0.8, 1, 1.2), labels=c("0","0.2","0.4","0.6", "0.8", "1", "1.2"), limits=c(0,1.2)) +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  theme(legend.position="none") +
-  labs(subtitle="(A)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-p1b
-
-
-## (B)  Evenness effects on Px male dev speed
-
-
-d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Px" & d.even$Sex=="m"),]
-p2 <- ggplot(d.temp, aes(x=Evenness, y=Days.to.pupation.ST.inv)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.03, color=pal[3], shape=symb[3], cex=2) +
-  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = 0.8), outlier.shape = NA)
-p2b <- p2 + ylab("M Dev Speed") + xlab("Evenness") +
-  geom_smooth(method="lm", col=pal[3], aes(group=1), fill=NA) +
-  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
-  #scale_y_continuous(breaks=c(0, 0.2, 0.4, 0.6, 0.8, 1, 1.2), labels=c("0","0.2","0.4","0.6", "0.8", "1", "1.2"), limits=c(0,1.2)) +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  theme(legend.position="none") +
-  labs(subtitle="(B)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-p2b
-
-
-
-
-## (C)  Evenness effects on Px male pupal weight
-
-
-d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Px" & d.even$Sex=="m"),]
-p3 <- ggplot(d.temp, aes(x=Evenness, y=Pupal.weight.ST)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.03, color=pal[3], shape=symb[3], cex=2) +
-  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = 0.8), outlier.shape = NA)
-p3b <- p3 + ylab("M Pupal Weight") +
-  xlab("") +
-  geom_smooth(method="lm", col=pal[3], aes(group=1), fill=NA) +
-  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
-  #scale_y_continuous(breaks=c(0, 0.2, 0.4, 0.6, 0.8, 1, 1.2), labels=c("0","0.2","0.4","0.6", "0.8", "1", "1.2"), limits=c(0,1.2)) +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  theme(legend.position="none") +
-  labs(subtitle="(C)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-p3b
-
-### (D) SD effects on Hz female development 
-
-d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Hz" & d.even$Sex=="f"),]
-d.temp$SD <- factor(d.temp$SD,levels(d.temp$SD)[c(2,3,1)]) #re-order factor levels
-p4 <- ggplot(d.temp, aes(x=SD, y=Days.to.pupation.ST.inv)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.2, color=pal[2], shape=symb[2], cex=2) +
-  geom_boxplot(width=0.5, notch = FALSE, alpha=0.5, outlier.shape = NA)
-p4b <- p4 + ylab("F Dev Speed") +
-  xlab("") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  theme(legend.position="none") +
-  scale_x_discrete(labels=c("Low", "Med", "High")) +
-  scale_y_continuous(limits=c(0.6,1.2)) +
-  annotate("text", label = "A", x = 1, y = 1.15, size=10) +
-  annotate("text", label = "A", x = 2, y = 1.15, size=10) +
-  annotate("text", label = "B", x = 3, y = 1.15, size=10)+
-  labs(subtitle="(D)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-p4b
-
-### (E) SD effects on Sf female development 
-
-d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Sf" & d.even$Sex=="f"),]
-d.temp$SD <- factor(d.temp$SD,levels(d.temp$SD)[c(2,3,1)]) #re-order factor levels
-p5 <- ggplot(d.temp, aes(x=SD, y=Days.to.pupation.ST.inv)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.2, color=pal[4], shape=symb[4], cex=2) +
-  geom_boxplot(width=0.5, notch = FALSE, alpha=0.5, outlier.shape = NA)
-p5b <- p5 + ylab("F Dev Speed") +
-  xlab("Structural Diversity") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  theme(legend.position="none") +
-  scale_x_discrete(labels=c("Low", "Med", "High")) +
-  scale_y_continuous(limits=c(0.25,1.25)) +
-  annotate("text", label = "A", x = 1, y = 1.2, size=10) +
-  annotate("text", label = "A", x = 2, y = 1.2, size=10) +
-  annotate("text", label = "B", x = 3, y = 1.2, size=10)+
-  labs(subtitle="(E)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-p5b
-
-
-
-### (F) SD effects on Hz male development 
-
-d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Hz" & d.even$Sex=="m"),]
-d.temp$SD <- factor(d.temp$SD,levels(d.temp$SD)[c(2,3,1)]) #re-order factor levels
-p6 <- ggplot(d.temp, aes(x=SD, y=Days.to.pupation.ST.inv)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.2, color=pal[2], shape=symb[2], cex=2) +
-  geom_boxplot(width=0.5, notch = FALSE, alpha=0.5, outlier.shape = NA)
-p6b <- p6 + ylab("M Dev Speed") +
-  xlab("") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  theme(legend.position="none") +
-  scale_x_discrete(labels=c("Low", "Med", "High")) +
-  scale_y_continuous(limits=c(0.6,1.2)) +
-  annotate("text", label = "A", x = 1, y = 1.15, size=10) +
-  annotate("text", label = "A", x = 2, y = 1.15, size=10) +
-  annotate("text", label = "B", x = 3, y = 1.15, size=10)+
-  labs(subtitle="(F)")+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-p6b
-
-
-#To get a legend for insects
-d.temp <- filter (d.rich, Treatment != "C", !is.na(Pupal.weight.ST))
-labs <- c(expression(paste(italic(" C.pomonella   "))),
-          expression(paste(italic(" H. zea   "))),
-          expression(paste(italic(" P. xylostella  "))), 
-          expression(paste(italic(" S. frugiperda  "))))
-
-p.temp <- ggplot(d.temp, aes(x=Richness, y=Pupal.weight.ST)) +
-  geom_jitter(width=0.3, height=0.3, aes(shape=Species, col=Species), size=6)
-
-p.temp.b <- p.temp + ylab("Standardized Pupal Weight") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  scale_shape_manual(values = symb, labels=labs) + 
-  scale_color_manual(values = pal, labels=labs) +
-  theme(legend.position="bottom", legend.title=element_blank())+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-l1 <- get_legend(p.temp.b)
-p.temp.b
-
-
-
-
-tiff(height=1050, width=1500, filename="FigS3_EvennessIndivEffects.tiff", type="cairo")
-lay <- rbind(c(1,2,3),  #graphs
-             c(4,5,6),  #graphs
-             c(7,7,7))   #legend
-grid.arrange(p1b, p2b, p3b, p4b, p5b, p6b, l1,
-             nrow=3, ncol=3, widths=c(500,500, 500), 
-             heights=c(500, 500, 50),
-             layout_matrix=lay)
-dev.off()
-
-cairo_pdf(height=11.9, width=17, filename="FigS3_EvennessIndivEffects.pdf")
-lay <- rbind(c(1,2,3),  #graphs
-             c(4,5,6),  #graphs
-             c(7,7,7))   #legend
-grid.arrange(p1b, p2b, p3b, p4b, p5b, p6b, l1,
-             nrow=3, ncol=3, widths=c(500,500, 500), 
-             heights=c(500, 500, 50),
-             layout_matrix=lay)
-dev.off()
-
-
-
-START HERE
 
 #----------------------------------------------------
 ### Fig. S2: Effects of richness on Zdiff (exp-obs effects of mixtures)
 # For prediction 1e
 #------------------------------
 
-load("WS_FinalAnalysesforMS_synergy")
+load("./Outputs/Workspaces/FinalAnalyses_Pred1d_synergy")
 
 #Only case where we found any potential effects was a marginal negative effect of richness
 #on Zdiff in Px pupal weights. This would indicate antagonism, or at least decreasing
@@ -809,13 +794,7 @@ p <- ggplot(d.temp, aes(x=Richness, y=diff)) +
         legend.key = element_rect(colour = "transparent", fill = "white"))
 p
 
-tiff(height=400, width=400, filename="FigS3_RichnessVSZdiff.tiff", type="cairo")
-p
-dev.off()
 
-cairo_pdf(height=6, width=6, filename="FigS3_RichnessVSZdiff.pdf")
-p
-dev.off()
 
 
 #Big composite plot of significant and non-significant relationships
@@ -1059,14 +1038,14 @@ lay <- rbind(c(1,1,1,1),
              c(22,22,22,22),
              c(23,23,23,23),
              c(24,24,24,24)) 
-tiff(height=1980, width=1800, filename="FigS3_RichVSIntStrength.tiff", type="cairo")
+tiff(height=1980, width=1800, filename="./Outputs/Figures/FigS2_RichVSIntStrength.tiff", type="cairo")
 grid.arrange(t1,p1,p2,p3,p4,t4,s1,t2,p5,p6,p7,p8,t4,s1,t3,p9,p10,p11,p12,t4,t5,l1,t6,l2, nrow=15, ncol=4, 
              widths=c(300,300,300,300),
              heights=c(50, 300, 50,10,50,300,50,10,50,300,50,50,50,50,50), layout_matrix=lay)
 dev.off()
 
 
-cairo_pdf(height=23.76, width=21.6, family="sans",filename="FigS3_RichVSIntStrength.pdf")
+cairo_pdf(height=23.76, width=21.6, family="sans",filename="./Outputs/Figures/FigS2_RichVSIntStrength.pdf")
 grid.arrange(t1,p1,p2,p3,p4,t4,s1,t2,p5,p6,p7,p8,t4,s1,t3,p9,p10,p11,p12,t4,t5,l1,t6,l2, nrow=15, ncol=4, 
              widths=c(300,300,300,300),
              heights=c(50, 300, 50,10,50,300,50,10,50,300,50,50,50,50,50), layout_matrix=lay)
@@ -1077,7 +1056,7 @@ dev.off()
 ### Fig. S3: Comparing mixtures to most effective singleton (Prediction 1e)
 #-------------------------------
 
-load("./Outputs/Workspaces/Pred1e_singletonsVSmix")
+load("./Outputs/Workspaces/FinalAnalyses_Pred1e_singletonsVSmix")
 
 
 #Big composite plot of significant and non-significant relationships
@@ -1375,7 +1354,7 @@ lay <- rbind(c(1,1,1,1),
              c(29,29,29,29),
              c(30,30,30,30),
              c(31,31,31,31)) 
-tiff(height=1980, width=1800, filename="FigS4_ProbBestSingle.tiff", type="cairo")
+tiff(height=1980, width=1800, filename="./Outputs/Figures/FigS3_ProbBestSingle.tiff", type="cairo")
 grid.arrange(t1,p1,p2,p3,p4,t4,s1,t2,p5,p6,p7,p8,t4,s1,t3,p9,p10,p11,p12,t4,s1,t5,
              p13,p14,p15,p16,t4,t6,l1,t7,l2, nrow=19, ncol=4, 
              widths=c(300,300,300,300),
@@ -1383,7 +1362,7 @@ grid.arrange(t1,p1,p2,p3,p4,t4,s1,t2,p5,p6,p7,p8,t4,s1,t3,p9,p10,p11,p12,t4,s1,t
 dev.off()
 
 
-cairo_pdf(height=23.76, width=21.6, family="sans",filename="FigS4_ProbBestSingle.pdf")
+cairo_pdf(height=23.76, width=21.6, family="sans",filename="./Outputs/Figures/FigS3_ProbBestSingle.pdf")
 grid.arrange(t1,p1,p2,p3,p4,t4,s1,t2,p5,p6,p7,p8,t4,s1,t3,p9,p10,p11,p12,t4,s1,t5,
              p13,p14,p15,p16,t4,t6,l1,t7,l2, nrow=19, ncol=4, 
              widths=c(300,300,300,300),
@@ -1391,329 +1370,13 @@ grid.arrange(t1,p1,p2,p3,p4,t4,s1,t2,p5,p6,p7,p8,t4,s1,t3,p9,p10,p11,p12,t4,s1,t
 dev.off()
 
 
-
-
-#-----------------------------------------------------
-###Figure 3: effects of richness and SD on number of organisms affected 
-#------------------------------
-
-load("./Outputs/Workspaces/Pred2a-2b_NumEffects")
-
-#simple plot
-plot(NumOrgAffected ~ jitter(Richness), data=NumEffects.rich)
-abline(lm(NumOrgAffected ~ Richness, data=NumEffects.rich))
-
-#pretty plot
-d.temp <- NumEffects.rich
-p1 <- ggplot(d.temp, aes(x=Richness, y=NumOrgAffected)) +
-  geom_jitter(width=0.15, height=0.15, cex=4, col=pal[2]) +
-  geom_smooth(method="lm", col="#6B244C", aes(group=1)) +
-  ylab("Numb. Consumers Affected") + xlab("Richness") +
-  labs(subtitle="(A)") +
-  scale_x_continuous(breaks=c(1,2,4,6,8,10), labels=c("1", "2","4","6", "8", "10")) +
-  theme(text = element_text(size = 35)) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
-p1
-
-d.temp <- NumEffects.rich
-d.temp$SD <- factor(d.temp$SD, levels=c("L", "M", "H"))
-p2 <- ggplot(d.temp, aes(x=SD, y=NumOrgAffected)) +
-  geom_jitter(width=0.15, height=0.15, cex=4, col=pal[2]) +
-  geom_boxplot(width=0.75, notch = FALSE, aes(group = cut_width(SD, 0.5), alpha = alpha_b), outlier.shape = NA) +
-  ylab("") + xlab("Structural Diversity") +
-  labs(subtitle="(B)") +
-  scale_x_discrete(breaks=c("L", "M", "H"), labels=c("low", "med", "high")) +
-  scale_y_continuous(limits=c(2,7.8), breaks=c(2,3,4,5,6,7)) +
-  theme(text = element_text(size = 35)) +
-  annotate(geom = "text", x = 1, y = 7.6, label = "A", size=8) +
-  annotate(geom = "text", x = 2, y = 7.6, label = "B", size=8) +
-  annotate(geom = "text", x = 3, y = 7.6, label = "B", size=8) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.position = "none")
-p2
-
-tiff(height=500, width=1000, filename="Fig3_NumbEffects.tiff", type="cairo")
-grid.arrange(p1, p2, nrow=1, ncol=2)
-dev.off()
-
-cairo_pdf(height=7.5, width=15, family="sans",filename="Fig3_NumbEffects.pdf")
-grid.arrange(p1, p2, nrow=1, ncol=2)
-dev.off()
-
-#-----------------------------------------------------------------------------
-###Figure S7: effects of evenness on number of organisms affected 
-#--------------------------
-
-NumEffects.even <- read.csv("NumEffects_even.csv")
-
-plot(jitter(NumHerbsAffected) ~ jitter(Evenness), data=NumEffects.even)
-abline(lm(NumHerbsAffected ~ Evenness, data=NumEffects.even))
-
-d.temp <- NumEffects.even
-p1 <- ggplot(d.temp, aes(x=Evenness, y=NumHerbsAffected)) +
-  geom_jitter(width=0.03, height=0.15, cex=4, col=dot_col) +
-  geom_smooth(method="lm", col="#6B244C", aes(group=1)) +
-  ylab("Numb. Herbivores Affected") + xlab("Evenness") +
-  scale_x_continuous(breaks=c(0.2,0.4,0.6,0.8,1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
-  theme(text = element_text(size = 35))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
-p1
-
-
-
-
-tiff(height=500, width=600, filename="FigS7_NumbEffects_even.tiff", type="cairo")
-p1
-dev.off()
-
-cairo_pdf(height=8, width=9, family="sans",filename="FigS7_NumbEffects_even.pdf")
-p1
-dev.off()
-
-
-
-
-#---------------------------------------------------------------------------
-## Figure 4: Effects of individual compounds, heatmaps
-#------------------------------
-
-load("./Outputs/Workspaces/FinalAnalyses_Pred2d&3a_IndivComps")
-
-#And we also need the distance matrix for compound structural similarities
-d.avg <- read.csv("./Outputs/Tables/CompoundDistances.csv")
-rownames(d.avg) <- d.avg$X
-d.avg <- d.avg[-1]
-
-#Set diverging colors for heatmaps
-show_col(viridis_pal()(10))
-hm_high <- viridis_pal()(10)[5]
-hm_low <- viridis_pal()(10)[1]
-hm_mid = "gray95"
-
-#hm_high <- ocean.curl(20)[2]
-#hm_low <- ocean.curl(20)[19]
-#hm_mid = ocean.curl(3)[2]
-
-
-base_size <- 20
-theme_update(plot.subtitle = element_text(hjust = 0.5, vjust=-5)) #originally at hjust=0 and vjust=1
-
-#Make a function to create a character vector that indicates
-#significance level with stars based on p-value
-stars <- function(x){
-  if(x < 0.001 & !is.na(x)){
-    s <- "***"
-  }else{
-    if(x < 0.01 & x >= 0.001 & !is.na(x)){
-      s <- "**"
-    }else{
-      if (x < 0.05 & x >=0.01 & !is.na(x)){
-        s <- "*"
-      } else{
-        s <- NA
-      }
-    }
-  }
-  return (s)
-}
-
-stars <- Vectorize(stars)
-
-
-####The plots
-
-
-#The dendrogram
-
-hc <- hclust(as.dist(1-d.avg), method="complete")
-plot(as.dendrogram(hc), edgePar=list(col=4, lwd=2), horiz=TRUE, main="Avg Distance") 
-
-dend <- as.dendrogram(hc)
-dend_data <- dendro_data(dend)
-
-# Setup the data, so that the layout is inverted (this is more 
-# "clear" than simply using coord_flip())
-segment_data <- with(
-  segment(dend_data), 
-  data.frame(x = y, y = x, xend = yend, yend = xend))
-# Use the dendrogram label data to position the compound labels
-comp_pos_table <- with(
-  dend_data$labels, 
-  data.frame(y_center = x, comp = as.character(label), height = 1))
-
-# Limits for the vertical axes
-comp_axis_limits <- with(
-  comp_pos_table, 
-  c(min(y_center - 0.5 * height), max(y_center + 0.5 * height))
-) + 
-  0.1 * c(-1, 1) # extra spacing: 0.1
-
-
-
-
-# Dendrogram plot
-p.dendr <- ggplot(segment_data) + 
-  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) + 
-  scale_x_reverse(position="top")+   #expand = c(0, 0.5)) + 
-  scale_y_continuous(breaks = comp_pos_table$y_center, limits = comp_axis_limits, 
-                     expand = c(0, 0), labels=c("Phloridzin", "Phloretin", "Rutin", 
-                            "Hyperin", "Quercetin", "Catechin", "Epicatechin",  
-                            "Gentistic Acid","Gallic Acid", "Syringic Acid",  
-                            "Chlorogenic Acid", "p-Coumaric Acid", "Caffeic Acid", 
-                            "Ferulic Acid")) + 
-  labs(x = "", y = "", colour = "", size = "") +
-  labs(subtitle="  \n    ", position="center") + 
-  #theme_void() + 
-  theme(axis.text.x = element_text(color="white"),
-        panel.grid.minor = element_blank(), axis.ticks.x=element_blank(),
-        panel.background= element_blank(),
-        panel.grid.major.y = element_line(color="gray90"),
-        panel.grid.major.x=element_blank())+
-        #, panel.grid.major = element_blank(),
-        #panel.grid.minor = element_blank(), axis.ticks = element_blank(),
-        #panel.background = element_blank()) +
-  theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,0), "cm"),
-        axis.text = element_text(size = 20)) 
-p.dendr
-
-
-
-#The heatmaps
-d.temp <- d.sum
-
-#re-order levels in the way we want them for the figure
-d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Phz", "Pht", "R", "H", "Q", "Ct",
-                                                     "eCt", "GeA", "GA", "SA", "ChA",
-                                                     "pCA", "CA", "FA"))
-
-d.temp <- mutate(d.temp, stars.PW=stars(PW.p))
-d.temp <- mutate(d.temp, stars.DtP=stars(DtP.p))
-d.temp <- mutate(d.temp, stars.S=stars(S.pval))
-
-p1 <- ggplot(d.temp, aes(x=Species, y=Treatment)) + 
-  geom_tile(aes(fill = PropSurv.ST), colour = "white", size=0.25) + 
-  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
-  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide = "colourbar", name="", limits=c(0.2, 1.8)) +  
-  geom_text(aes(label=stars.S), col="white", size=6, vjust=0.7)
-p1.b <- p1 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
-                   axis.text = element_text(size = 20)) +
-  labs(subtitle="Survival\n   ", position="center") + 
-  labs(x="", y="") +
-  #scale_y_discrete(labels=c("Phloridzin", "Phloretin", "Rutin", "Hyperin",
-   #                         "Quercetin", "Catechin", "Epicatechin",  "Gentistic Acid",
-    #                        "Gallic Acid", "Syringic Acid",  "Chlorogenic Acid", 
-     #                       "p-Coumaric Acid", "Caffeic Acid", "Ferulic Acid")) +
-  scale_x_discrete(position="top") +
-  theme(legend.position="", axis.text.y=element_blank(),axis.ticks.y = element_blank())
-p1.b
-
-
-p2 <- ggplot(d.temp, aes(x=Species, y=Treatment))  + 
-  geom_tile(aes(fill = DtP.avg), colour = "white") + 
-  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
-  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide = "colourbar", name="", limits=c(0.2, 1.8)) +
-  geom_text(aes(label=stars.DtP), col="white", size=6, vjust=0.7)
-p2.b <- p2 +  theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
-                    axis.text = element_text(size = 20),axis.text.y=element_blank(),
-                    axis.ticks.y = element_blank()) +
-  labs(subtitle="Development\nSpeed", x="", y="") +
-  scale_x_discrete(position="top") +
-  theme(legend.position="")
-p2.b
-
-
-
-p3 <- ggplot(d.temp, aes(x=Species, y=Treatment)) + 
-  geom_tile(aes(fill = PW.avg), colour = "white") + 
-  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
-  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  +
-  geom_text(aes(label=stars.PW), col="white", size=6, vjust=0.7)
-p3.b <- p3 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
-                   axis.text = element_text(size = 20),axis.text.y=element_blank(),
-                   axis.ticks.y = element_blank()) +
-  labs(subtitle="Pupal\nMass", x="", y="") +
-  scale_x_discrete(position="top") +
-  theme(legend.position="")
-p3.b
-
-
-d.temp <- d.sum.F
-d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Phz", "Pht", "R", "H", "Q", "Ct",
-                                                     "eCt", "GeA", "GA", "SA", "ChA",
-                                                     "pCA", "CA", "FA"))
-
-d.temp <- mutate(d.temp, stars.F=stars(F.p))
-
-p4 <- ggplot(d.temp, aes(x=Fungi, y=Treatment)) + 
-  geom_tile(aes(fill = F.avg), colour = "white") + 
-  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) +
-  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  +
-  geom_text(aes(label=stars.F), col="white", size=6, vjust=0.7)
-p4.b <- p4 + theme(text = element_text(size = 20), plot.margin=unit(c(-0.5,0,0,-0.85), "cm"),
-                   axis.text = element_text(size = 20),axis.text.y=element_blank(),
-                   axis.ticks.y = element_blank()) +
-  labs(subtitle="Growth\nRate", x="", y="") +
-  scale_x_discrete(position="top", labels=c("Bd", "C", "Pe", "Ss")) +
-  theme(legend.position="")
-p4.b
-
-
-#to get a legend
-p.temp <- ggplot(d.temp, aes(x=Fungi, y=Treatment)) + 
-  geom_tile(aes(fill = F.avg), colour = "white") + 
-  #scale_fill_gradientn(colors=rev(ocean.curl(10)), guide = "colourbar", name="", limits=c(0.2, 1.8)) 
-  scale_fill_gradient2(low = hm_low, mid = hm_mid, high = hm_high, 
-                       midpoint = 1, guide="colourbar", name="", limits=c(0.2, 1.8))  
-p.temp.b <- p.temp + theme(text = element_text(size = 20), plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"),
-                   axis.text = element_text(size = 20),axis.text.y=element_blank(),
-                   axis.ticks.y = element_blank()) +
-  labs(subtitle="Growth\nRate", x="", y="") +
-  scale_x_discrete(position="top", labels=c("Bd", "C", "Pe", "Ss")) +
-  theme(legend.position=c(0.5,0.4), legend.direction="horizontal")+
-  guides(fill=guide_colorbar(barwidth=35), ticks=TRUE)#hjust=200)
-p.temp.b
-l1 <- get_legend(p.temp.b)
-
-
-
-s1 <- segmentsGrob(x0 = 0.5, y0 = 0,
-                   x1 = 0.5, y1 = 1, gp = gpar(col="darkslategray"))
-s2 <- segmentsGrob(x0 = 0, y0 = 0.5,
-                   x1 = 1, y1 = 0.5, gp = gpar(col="darkslategray"))
-t1 <- textGrob("", gp=gpar(fontsize=25))
-t2 <- textGrob("Insects", gp=gpar(fontsize=25))
-t3 <- textGrob("Fungi", gp=gpar(fontsize=25))
-
-
-lay <- rbind(c(1,2,2,2,2,2,3,4),
-             c(1,5,5,5,5,5,5,5),  
-             c(6,7,8,9,10,11,12,13),   #plot, plot, line, plot, line, plot, line, plot  
-             c(1,rep(14, 7)))
-
-tiff(height=528, width=795.2, filename="Fig4d_IndivCompHeatmaps.tiff", type="cairo") #0.8*widths
-grid.arrange(t1,t2,s1,t3, s2,p.dendr, p1.b, s1,p2.b, s1, p3.b, s1, p4.b,l1, nrow=4, ncol=8, 
-             widths=c(350,188,10,188,10,188,10,188),
-             heights=c(50,10,600,100), layout_matrix=lay)
-dev.off()
- 
-
-
-cairo_pdf(height=7.92, width=11.928, family="sans",filename="Fig4d_IndivCompHeatmaps.pdf")
-grid.arrange(t1,t2,s1,t3, s2,p.dendr, p1.b, s1,p2.b, s1, p3.b, s1, p4.b,l1, nrow=4, ncol=8, 
-             widths=c(350,188,10,188,10,188,10,188),
-             heights=c(50,10,600,100), layout_matrix=lay)
-dev.off()
 
 #-----------------------------------------------------------------------
-## Figure S4: Effects of each treatment on each herbivore
+## Fig. S4: Effects of each treatment on each herbivore
 #-------------------------------
+
+##Load workspace with standardized data
+load("./Outputs/Workspaces/StandardizedData")
 
 #For pupal weights
 d.temp <- filter (d.rich, Treatment != "C", !is.na(Pupal.weight.ST))
@@ -1721,11 +1384,11 @@ d.temp <- filter (d.rich, Treatment != "C", !is.na(Pupal.weight.ST))
 #re-order levels in the way we want them for the figure
 d.temp$Treatment <- factor(d.temp$Treatment,levels=c("Pht", "Phz", "Q", "H", "R",  "eCt", "Ct",
                                                      "GeA",  "SA", "GA", "FA", "pCA", "CA", "ChA", 
-                                              "L2A", "L2B", "L2C", "M2A", "M2B", "M2C", "H2A", "H2B", "H2C",
-                                              "L4A", "L4B", "L4C", "M4A", "M4B", "M4C", "H4A", "H4B", "H4C",
-                                              "L6A", "L6B", "L6C", "M6A", "M6B", "M6C", "H6A", "H6B", "H6C",
-                                              "L8A", "L8B", "L8C", "M8A", "M8B", "M8C", "H8A", "H8B", "H8C",
-                                  "L10A", "L10B", "L10C", "M10A", "M10B", "M10C", "H10A", "H10B", "H10C"))
+                                                     "L2A", "L2B", "L2C", "M2A", "M2B", "M2C", "H2A", "H2B", "H2C",
+                                                     "L4A", "L4B", "L4C", "M4A", "M4B", "M4C", "H4A", "H4B", "H4C",
+                                                     "L6A", "L6B", "L6C", "M6A", "M6B", "M6C", "H6A", "H6B", "H6C",
+                                                     "L8A", "L8B", "L8C", "M8A", "M8B", "M8C", "H8A", "H8B", "H8C",
+                                                     "L10A", "L10B", "L10C", "M10A", "M10B", "M10C", "H10A", "H10B", "H10C"))
 d.temp$Treatment <- factor(d.temp$Treatment,levels=rev(levels(d.temp$Treatment)))
 
 #Pupal weights
@@ -1856,7 +1519,7 @@ t1 <- textGrob("Insect Species (Plots A, B, C)", gp=gpar(fontsize=12))
 t2 <- textGrob("Fungal Species (Plot D)", gp=gpar(fontsize=12))
 
 
-tiff(height=720, width=600,filename="FigS5_treatment_X_herbivore.tiff", type="cairo")
+tiff(height=720, width=600,filename="./Outputs/Figures/FigS4_treatment_X_herbivore.tiff", type="cairo")
 lay <- rbind(c(1,2,3,4),  #graphs
              c(5,5,5,5),
              c(6,6,6,6),
@@ -1869,7 +1532,7 @@ dev.off()
 
 
 
-cairo_pdf(height=10.368, width=8.64, family="sans",filename="FigS5_treatment_X_herbivore.pdf")
+cairo_pdf(height=10.368, width=8.64, family="sans",filename="./Outputs/Figures/FigS4_treatment_X_herbivore.pdf")
 lay <- rbind(c(1,2,3,4),  #graphs
              c(5,5,5,5),
              c(6,6,6,6),
@@ -1881,87 +1544,83 @@ dev.off()
 
 
 
-#-----------------------------------------OTHER FUNGI--not needed for paper
 
-#---  Colletotrichum
-d.temp <- filter (d.fungi2, Fungi=="Collet", Treatment != "DMSO")
-d.temp$SD <- factor(d.temp$SD, levels=c("L", "M", "H"))
+##-----------------------------------------------
+##  Fig. S5: Evenness effects on performance
+##------------------------------
 
-p2 <- ggplot(d.temp, aes(x=Richness, y=dAbs.ST)) +
+##Load workspace with standardized data
+load("./Outputs/Workspaces/StandardizedData")
+
+#For Pupal Weights
+d.temp <- filter (d.even, Treatment != "C", !is.na(Pupal.weight.ST))
+
+p1 <- ggplot(d.temp, aes(x=Evenness, y=Pupal.weight.ST)) +
   geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.3, aes(shape=SD, col=SD), alpha=alpha_p) +
-  stat_summary(fun.y = "mean", data=d.temp, aes(color=SD), size = 3, geom = "point")
+  geom_jitter(width=0.03, aes(shape=Species, col=Species), alpha=alpha_p) +
+  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = alpha_b), outlier.shape = NA)
 
-p2.b <- p2 + ylab("Growth Rate") + xlab("") +
+p1.b <- p1 + ylab("Pupal Mass") + xlab("") +
   theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  scale_x_continuous(breaks=c(1,2,4,6,8,10), labels=c("1","2","4", "6", "8", "10"), limits=c(0.5,10.5)) +
-  scale_shape_manual(values = symb, labels=labs) + 
-  scale_color_manual(values = pal3, labels=labs) +
-  theme(legend.position="none") +
-  labs(subtitle="(B)") +
+  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
+  scale_shape_manual(values = symb) + 
+  scale_color_manual(values = pal) +
+  theme(legend.position="none")+
+  labs(subtitle="(A)")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+p1.b
+
+
+#For Dev Speed
+d.temp <- filter (d.even, Treatment != "C", !is.na(Days.to.pupation.ST.inv))
+
+p2 <- ggplot(d.temp, aes(x=Evenness, y=Days.to.pupation.ST.inv)) +
+  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
+  geom_jitter(width=0.03, height=0.03, aes(shape=Species, col=Species), alpha=alpha_p) +
+  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = alpha_b), outlier.shape = NA)
+
+p2.b <- p2 + ylab("Development Speed") + xlab("Evenness") +
+  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
+  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
+  scale_shape_manual(values = symb) + 
+  scale_color_manual(values = pal) +
+  theme(legend.position="none")+
+  labs(subtitle="(B)")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
 p2.b
 
-
-#---  Penicillium
-d.temp <- filter (d.fungi2, Fungi=="Penicillium", Treatment != "DMSO")
-d.temp$SD <- factor(d.temp$SD, levels=c("L", "M", "H"))
-
-p3 <- ggplot(d.temp, aes(x=Richness, y=dAbs.ST)) +
+#For Survival
+d.temp <- filter (d.even.PS, Treatment != "C", !is.na(PropSurv.ST))
+p3 <- ggplot(d.temp, aes(x=Evenness, y=PropSurv.ST)) +
   geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.3, aes(shape=SD, col=SD), alpha=alpha_p) +
-  stat_summary(fun.y = "mean", data=d.temp, aes(color=SD), size = 3, geom = "point")
+  geom_jitter(width=0.03, aes(shape=Species, col=Species), alpha=alpha_p) +
+  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = alpha_b), outlier.shape = NA)
 
-p3.b <- p3 + ylab("Growth Rate") + xlab("") +
+p3.b <- p3 + ylab("Survival") + xlab("") +
   theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  scale_x_continuous(breaks=c(1,2,4,6,8,10), labels=c("1","2","4", "6", "8", "10"), limits=c(0.5,10.5)) +
-  scale_shape_manual(values = symb, labels=labs) + 
-  scale_color_manual(values = pal3, labels=labs) +
+  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
+  scale_shape_manual(values = symb) + 
+  scale_color_manual(values = pal) +
   theme(legend.position="none") +
-  labs(subtitle="(D)") +
+  labs(subtitle="(C)")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
 p3.b
 
-
-#---  Sclerotinia
-d.temp <- filter (d.fungi2, Fungi=="Sclerotinia", Treatment != "DMSO")
-d.temp$SD <- factor(d.temp$SD, levels=c("L", "M", "H"))
-
-p4 <- ggplot(d.temp, aes(x=Richness, y=dAbs.ST)) +
-  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.3, aes(shape=SD, col=SD), alpha=alpha_p) +
-  stat_summary(fun.y = "mean", data=d.temp, aes(color=SD), size = 3, geom = "point")
-
-p4.b <- p4 + ylab("Growth Rate") + xlab("") +
-  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
-  scale_x_continuous(breaks=c(1,2,4,6,8,10), labels=c("1","2","4", "6", "8", "10"), limits=c(0.5,10.5)) +
-  scale_shape_manual(values = symb, labels=labs) + 
-  scale_color_manual(values = pal3, labels=labs) +
-  theme(legend.position="none") +
-  labs(subtitle="(C)") +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"),
-        legend.key = element_rect(colour = "transparent", fill = "white"))
-p4.b
-
-
-
-
-#To get a legend
+#To get a legend for insects
 d.temp <- filter (d.rich, Treatment != "C", !is.na(Pupal.weight.ST))
 labs <- c(expression(paste(italic(" C.pomonella   "))),
           expression(paste(italic(" H. zea   "))),
           expression(paste(italic(" P. xylostella  "))), 
           expression(paste(italic(" S. frugiperda  "))))
 
-p4 <- ggplot(d.temp, aes(x=Richness, y=Pupal.weight.ST)) +
+p.temp <- ggplot(d.temp, aes(x=Richness, y=Pupal.weight.ST)) +
   geom_jitter(width=0.3, height=0.3, aes(shape=Species, col=Species), size=6)
 
-p4.b <- p4 + ylab("Standardized Pupal Weight") +
+p.temp.b <- p.temp + ylab("Standardized Pupal Weight") +
   theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
   scale_shape_manual(values = symb, labels=labs) + 
   scale_color_manual(values = pal, labels=labs) +
@@ -1969,373 +1628,252 @@ p4.b <- p4 + ylab("Standardized Pupal Weight") +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"),
         legend.key = element_rect(colour = "transparent", fill = "white"))
-l1 <- get_legend(p4.b)
-p4.b
+l1 <- get_legend(p.temp.b)
+p.temp.b
 
 
 
-#----------------------------------------------------------------------------
-##Other ideas: Heatmaps looking at overall effects of richness
+#Make the composite fig
+
+tiff(height=550, width=1500, filename="./Outputs/Figures/FigS5_Evenness.tiff", type="cairo")
+lay <- rbind(c(1,2,3),  #graphs
+             c(4,4,4)) #legend
+grid.arrange(p1.b, p2.b, p3.b, l1, nrow=2, ncol=3, widths=c(500, 500, 500),
+             heights=c(500, 50), layout_matrix=lay)
+dev.off()
+
+
+cairo_pdf(height=7.33, width=20, family="sans",filename="./Outputs/Figures/FigS5_Evenness.pdf")
+lay <- rbind(c(1,2,3),  #graphs
+             c(4,4,4)) #legend
+grid.arrange(p1.b, p2.b, p3.b, l1, nrow=2, ncol=3, widths=c(500, 500, 500),
+             heights=c(500, 50), layout_matrix=lay)
+dev.off()
+
+
+
+
+#----------------------------------------------
+#  Fig. S6: Composite fig of all places there are significant effects of evenness 
+#     or SD on individual herbivore species and metrics
 #-------------------------------
 
+## (A)  Evenness effects on Sf male pupal weight
 
-####heatmap type plots to summarize the effects of Richness
-#######    across all species and aspects of performance
-
-d.temp <- d.rich[which(d.rich$Richness != "0"),]
-d.rich.means <- d.temp %>%
-  group_by (Species, Sex, Richness) %>%
-  summarise(mean.PW=mean(Pupal.weight.ST, na.rm=TRUE),
-            mean.D2P=mean(Days.to.pupation.ST, na.rm=TRUE),
-            mean.D2P.inv=mean(Days.to.pupation.ST.inv, na.rm=TRUE))
-d.rich.means$Species <- factor(d.rich.means$Species,levels(d.rich.means$Species)[c(2,4,1,3)])
-d.rich.means.f <- d.rich.means[which(d.rich.means$Sex == "f"),] 
-d.rich.means.m <- d.rich.means[which(d.rich.means$Sex == "m"),] 
-d.temp <- d.rich.PS[which(d.rich.PS$Richness != "0"),]
-d.rich.means.PS <- d.temp %>%
-  group_by(Species, Richness) %>%
-  summarise(mean.S=mean(PropSurv, na.rm=TRUE)) 
-d.rich.means.PS$Species <- factor(d.rich.means.PS$Species,levels(d.rich.means.PS$Species)[c(2,4,1,3)])
-
-
-range(d.rich.means.f$mean.PW)
-range(d.rich.means.f$mean.D2P.inv)
-range(d.rich.means.m$mean.PW)
-range(d.rich.means.m$mean.D2P.inv)
-range(d.rich.means.PS$mean.S)
-
-
-base_size <- 30
-theme_update(plot.title = element_text(hjust = 0.5))
-
-#Survival
-p1 <- ggplot(d.rich.means.PS, aes(x=Species, y=as.factor(Richness))) + 
-  geom_tile(aes(fill = mean.S), colour = "white") +
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.6,1.401), guide = "colourbar", name="") +
-  geom_rect(aes(xmin = 1.5, xmax = 2.5, ymin = 0.5, ymax = 6.5),
-            fill = "transparent", color = "darkslategray", size = 0.5) 
-p1.b <- p1 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Survival", x="", y="Richness")
-p1.b
-l1 <- get_legend(p1.b)
-
-#now re-define plot w/o legend
-p1 <- ggplot(d.rich.means.PS, aes(x=Species, y=as.factor(Richness))) + 
-  geom_tile(aes(fill = mean.S), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.6,1.401), guide = "none", name="")+
-  geom_rect(aes(xmin = 1.5, xmax = 2.5, ymin = 0.5, ymax = 6.5),
-            fill = "transparent", color = "darkslategray", size = 0.5) 
-p1.b <- p1 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right") +
-  labs(title=" ", x="", y="")
-
-
-#Female Pupal Mass
-p2 <- ggplot(d.rich.means.f, aes(x=Species, y=as.factor(Richness))) + 
-  geom_tile(aes(fill = mean.PW), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.8,1.2), guide="none", name="")  ##change to guide="colourbar", name=""
-p2.b <- p2 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Female", x="", y="")
-p2.b
-
-#Male Pupal Mass
-p3 <- ggplot(d.rich.means.m, aes(x=Species, y=as.factor(Richness))) + 
-  geom_tile(aes(fill = mean.PW), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.8,1.201), guide="colourbar", name="")  ##change to guide="colourbar", name=""
-p3.b <- p3 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Male", x="", y="")
-p3.b
-l3 <- get_legend(p3.b)
-
-#re-define, no legend
-p3 <- ggplot(d.rich.means.m, aes(x=Species, y=as.factor(Richness))) + 
-  geom_tile(aes(fill = mean.PW), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.8,1.201), guide="none", name="")  ##change to guide="colourbar", name=""
-p3.b <- p3 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Male", x="", y="")
-p3.b
-
-
-#Female Development Speed
-p4 <- ggplot(d.rich.means.f, aes(x=Species, y=as.factor(Richness))) + 
-  geom_tile(aes(fill = mean.D2P.inv), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.6,1.401), guide = "none", name="")
-p4.b <- p4 +  theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                    axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Female", x="", y="")
-p4.b
-
-
-#Male Development Speed
-p5 <- ggplot(d.rich.means.m, aes(x=Species, y=as.factor(Richness))) + 
-  geom_tile(aes(fill = mean.D2P.inv), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.6,1.401), guide = "colourbar", name="")
-p5.b <- p5 +  theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                    axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Male", x="", y="")
-p5.b
-
-l5 <- get_legend(p5.b)
-
-#re-define, no legend
-p5 <- ggplot(d.rich.means.m, aes(x=Species, y=as.factor(Richness))) + 
-  geom_tile(aes(fill = mean.D2P.inv), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.6,1.401), guide = "none", name="")
-p5.b <- p5 +  theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                    axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Male", x="", y="")
-p5.b
-
-t1 <- textGrob("Survival", gp=gpar(fontsize=35))
-t2 <- textGrob("Pupal Mass", gp=gpar(fontsize=35))
-t3 <- textGrob("Development Speed", gp=gpar(fontsize=35))
-t4 <- textGrob("Richness", gp=gpar(fontsize=35), rot=90)
-#t3 <- textGrob("Richness", gp=gpar(fontsize=25), rot = 90)
-
-s1 <- segmentsGrob(x0 = 0.5, y0 = 0,
-                   x1 = 0.5, y1 = 1, gp = gpar(col="darkslategray"))
-s2 <- segmentsGrob(x0 = 0, y0 = 0.5,
-                   x1 = 1, y1 = 0.5, gp = gpar(col="darkslategray"))
-
-#segmentsGrob(x0 = unit(0, "npc"), y0 = unit(0, "npc"),
-#             x1 = unit(0, "npc"), y1 = unit(1, "npc"), gp = gpar(col="darkgrey"), vp = NULL)
-
-tiff(height=565, width=1820, filename="FigS1A_RichnessHeatmaps.tiff", type="cairo")
-lay <- rbind(c(1,NA,2, 3, 3, NA, 4, 5, 5, NA),
-             c(rep(6, 10)),
-             c(7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
-grid.arrange(t1, s1, t2, s1, t3, s2, p1.b, l1, s1, p2.b, p3.b, l3, s1, p4.b, p5.b, l5,
-             nrow=3, ncol=10, widths=c(300,100, 10, 300,300, 100, 10, 300, 300, 100), 
-             heights=c(50, 15, 500),
-             layout_matrix=lay, left=t4)
-dev.off()
-
-
-
-cairo_pdf(height=8.475, width=27.3, family="sans",filename="FigS1A_RichnessHeatmaps.pdf")
-lay <- rbind(c(1,NA,2, 3, 3, NA, 4, 5, 5, NA),
-             c(rep(6, 10)),
-             c(7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
-grid.arrange(t1, s1, t2, s1, t3, s2, p1.b, l1, s1, p2.b, p3.b, l3, s1, p4.b, p5.b, l5,
-             nrow=3, ncol=10, widths=c(300,100, 10, 300,300, 100, 10, 300, 300, 100), 
-             heights=c(50, 15, 500),
-             layout_matrix=lay, left=t4)
-dev.off()
-
-
-
-
-####Fig. S1b: Evenness heatmap plots
-
-d.temp <- d.even[which(d.even$Evenness != "0"),]
-d.even.means <- d.temp %>%
-  group_by (Species, Sex, Evenness) %>%
-  summarise(mean.PW=mean(Pupal.weight.ST, na.rm=TRUE),
-            mean.D2P=mean(Days.to.pupation.ST, na.rm=TRUE),
-            mean.D2P.inv=mean(Days.to.pupation.ST.inv, na.rm=TRUE))
-d.even.means$Species <- factor(d.even.means$Species,levels(d.even.means$Species)[c(2,4,1,3)])
-d.even.means.f <- d.even.means[which(d.even.means$Sex == "f"),] 
-d.even.means.m <- d.even.means[which(d.even.means$Sex == "m"),] 
-d.temp <- d.even.PS[which(d.even.PS$Evenness != "0"),]
-d.even.means.PS <- d.temp %>%
-  group_by(Species, Evenness) %>%
-  summarise(mean.S=mean(PropSurv, na.rm=TRUE)) 
-d.even.means.PS$Species <- factor(d.even.means.PS$Species,levels(d.even.means.PS$Species)[c(2,4,1,3)])
-
-
-range(d.even.means.f$mean.PW)
-range(d.even.means.f$mean.D2P.inv)
-range(d.even.means.m$mean.PW)
-range(d.even.means.m$mean.D2P.inv)
-range(d.even.means.PS$mean.S)
-
-base_size <- 30
-theme_update(plot.title = element_text(hjust = 0.5))
-
-#Survival
-p1 <- ggplot(d.even.means.PS, aes(x=Species, y=as.factor(Evenness))) + 
-  geom_tile(aes(fill = mean.S), colour = "white") +
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.35,1.2), guide = "colourbar", name="")
-p1.b <- p1 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Survival", x="", y="Evenness")
-p1.b
-l1 <- get_legend(p1.b)
-
-#now re-define plot w/o legend
-p1 <- ggplot(d.even.means.PS, aes(x=Species, y=as.factor(Evenness))) + 
-  geom_tile(aes(fill = mean.S), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.35,1.2), guide = "none", name="")
-p1.b <- p1 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right") +
-  labs(title=" ", x="", y="")
-
-
-
-#Female Pupal Mass
-p2 <- ggplot(d.even.means.f, aes(x=Species, y=as.factor(Evenness))) + 
-  geom_tile(aes(fill = mean.PW), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.8,1.2), guide="none", name="")  ##change to guide="colourbar", name=""
-p2.b <- p2 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Female", x="", y="")
-p2.b
-
-#Male Pupal Mass
-p3 <- ggplot(d.even.means.m, aes(x=Species, y=as.factor(Evenness))) + 
-  geom_tile(aes(fill = mean.PW), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.8,1.201), guide="colourbar", name="") + ##change to guide="colourbar", name=""
-  geom_rect(aes(xmin = 1.5, xmax = 2.5, ymin = 0.5, ymax = 5.5),
-            fill = "transparent", color = "darkslategray", size = 0.5) +
-  geom_rect(aes(xmin = 3.5, xmax = 4.5, ymin = 0.5, ymax = 5.5),
-            fill = "transparent", color = "darkslategray", size = 0.5) 
-p3.b <- p3 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Male", x="", y="")
-p3.b
-l3 <- get_legend(p3.b)
-
-#re-define, no legend
-p3 <- ggplot(d.even.means.m, aes(x=Species, y=as.factor(Evenness))) + 
-  geom_tile(aes(fill = mean.PW), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.8,1.201), guide="none", name="") +  ##change to guide="colourbar", name=""
-  geom_rect(aes(xmin = 1.5, xmax = 2.5, ymin = 0.5, ymax = 5.5),
-            fill = "transparent", color = "darkslategray", size = 0.5) +
-  geom_rect(aes(xmin = 3.5, xmax = 4.5, ymin = 0.5, ymax = 5.5),
-            fill = "transparent", color = "darkslategray", size = 0.5) 
-p3.b <- p3 + theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                   axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Male", x="", y="")
-p3.b
-
-
-#Female Development Speed
-p4 <- ggplot(d.even.means.f, aes(x=Species, y=as.factor(Evenness))) + 
-  geom_tile(aes(fill = mean.D2P.inv), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.6,1.1), guide = "none", name="")
-p4.b <- p4 +  theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                    axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Female", x="", y="")
-p4.b
-
-
-#Male Development Speed
-p5 <- ggplot(d.even.means.m, aes(x=Species, y=as.factor(Evenness))) + 
-  geom_tile(aes(fill = mean.D2P.inv), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.6,1.1), guide = "colourbar", name="") +
-  geom_rect(aes(xmin = 3.5, xmax = 4.5, ymin = 0.5, ymax = 5.5),
-            fill = "transparent", color = "darkslategray", size = 0.5)
-p5.b <- p5 +  theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                    axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Male", x="", y="")
-p5.b
-
-l5 <- get_legend(p5.b)
-
-#re-define, no legend
-p5 <- ggplot(d.even.means.m, aes(x=Species, y=as.factor(Evenness))) + 
-  geom_tile(aes(fill = mean.D2P.inv), colour = "white") + 
-  scale_fill_gradient2(low = hm_low, mid = "gray95", high = hm_high, 
-                       midpoint = 1, limits=c(0.6,1.1), guide = "none", name="") +
-  geom_rect(aes(xmin = 3.5, xmax = 4.5, ymin = 0.5, ymax = 5.5),
-            fill = "transparent", color = "darkslategray", size = 0.5)
-p5.b <- p5 +  theme(text = element_text(size = 30), plot.margin=unit(c(0.5,0,0,0), "cm"),
-                    axis.text = element_text(size = 30)) +
-  theme(legend.position="right", legend.key.height=unit(3,"line")) +
-  labs(title="Male", x="", y="")
-p5.b
-
-t1 <- textGrob("Survival", gp=gpar(fontsize=35))
-t2 <- textGrob("Pupal Mass", gp=gpar(fontsize=35))
-t3 <- textGrob("Development Speed", gp=gpar(fontsize=35))
-t4 <- textGrob("Evenness", gp=gpar(fontsize=35), rot=90)
-#t3 <- textGrob("Evenness", gp=gpar(fontsize=25), rot = 90)
-
-s1 <- segmentsGrob(x0 = 0.5, y0 = 0,
-                   x1 = 0.5, y1 = 1, gp = gpar(col="darkslategray"))
-s2 <- segmentsGrob(x0 = 0, y0 = 0.5,
-                   x1 = 1, y1 = 0.5, gp = gpar(col="darkslategray"))
-
-#segmentsGrob(x0 = unit(0, "npc"), y0 = unit(0, "npc"),
-#             x1 = unit(0, "npc"), y1 = unit(1, "npc"), gp = gpar(col="darkgrey"), vp = NULL)
-
-tiff(height=565, width=1820, filename="FigS1B_EvennessHeatmaps.tiff", type="cairo")
-lay <- rbind(c(1,NA,2, 3, 3, NA, 4, 5, 5, NA),
-             c(rep(6, 10)),
-             c(7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
-grid.arrange(t1, s1, t2, s1, t3, s2, p1.b, l1, s1, p2.b, p3.b, l3, s1, p4.b, p5.b, l5,
-             nrow=3, ncol=10, widths=c(300,100, 10, 300,300, 100, 10, 300, 300, 100), 
-             heights=c(50, 15, 500),
-             layout_matrix=lay, left=t4)
-dev.off()
-
-
-
-cairo_pdf(height=8.475, width=27.3, family="sans",filename="FigS1B_EvennessHeatmaps.pdf")
-lay <- rbind(c(1,NA,2, 3, 3, NA, 4, 5, 5, NA),
-             c(rep(6, 10)),
-             c(7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
-grid.arrange(t1, s1, t2, s1, t3, s2, p1.b, l1, s1, p2.b, p3.b, l3, s1, p4.b, p5.b, l5,
-             nrow=3, ncol=10, widths=c(300,100, 10, 300,300, 100, 10, 300, 300, 100), 
-             heights=c(50, 15, 500),
-             layout_matrix=lay, left=t4)
-dev.off()
-
-
-
-### (B) SD effects on Px male development 
-
-d.temp <- d.rich[which(d.rich$Richness != "0" & d.rich$Species=="Px" & d.rich$Sex=="m"),]
-d.temp$SD <- factor(d.temp$SD,levels(d.temp$SD)[c(2,3,1)]) #re-order factor levels
-p2 <- ggplot(d.temp, aes(x=SD, y=Days.to.pupation.ST.inv)) +
+d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Sf" & d.even$Sex=="m"),]
+p1 <- ggplot(d.temp, aes(x=Evenness, y=Pupal.weight.ST)) +
   geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
-  geom_jitter(width=0.2, color=pal[3], shape=symb[3], cex=2) +
-  geom_boxplot(width=0.5, notch = FALSE, alpha=0.5, outlier.shape = NA)
-p2.b <- p2 + ylab("M Dev Speed") +
-  xlab("Structural Diversity") +
+  geom_jitter(width=0.03, color=pal[4], shape=symb[4], cex=2) +
+  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = 0.8), outlier.shape = NA)
+p1b <- p1 + ylab("M Pupal Weight") +
+  xlab("")+
+  geom_smooth(method="lm", col=pal[4], aes(group=1), fill=NA) +
+  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
+  #scale_y_continuous(breaks=c(0, 0.2, 0.4, 0.6, 0.8, 1, 1.2), labels=c("0","0.2","0.4","0.6", "0.8", "1", "1.2"), limits=c(0,1.2)) +
   theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
   theme(legend.position="none") +
-  scale_x_discrete(labels=c("low", "med", "high")) +
-  scale_y_continuous(limits=c(0.5,1.75)) +
-  annotate("text", label = "A", x = 1, y = 1.68, size=10) +
-  annotate("text", label = "B", x = 2, y = 1.68, size=10) +
-  annotate("text", label = "AB", x = 3, y = 1.68, size=10)+
+  labs(subtitle="(A)")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.key = element_rect(colour = "transparent", fill = "white"))
+p1b
+
+
+## (B)  Evenness effects on Px male dev speed
+
+
+d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Px" & d.even$Sex=="m"),]
+p2 <- ggplot(d.temp, aes(x=Evenness, y=Days.to.pupation.ST.inv)) +
+  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
+  geom_jitter(width=0.03, color=pal[3], shape=symb[3], cex=2) +
+  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = 0.8), outlier.shape = NA)
+p2b <- p2 + ylab("M Dev Speed") + xlab("Evenness") +
+  geom_smooth(method="lm", col=pal[3], aes(group=1), fill=NA) +
+  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
+  #scale_y_continuous(breaks=c(0, 0.2, 0.4, 0.6, 0.8, 1, 1.2), labels=c("0","0.2","0.4","0.6", "0.8", "1", "1.2"), limits=c(0,1.2)) +
+  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
+  theme(legend.position="none") +
   labs(subtitle="(B)")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"),
         legend.key = element_rect(colour = "transparent", fill = "white"))
-p2.b
+p2b
+
+
+
+
+## (C)  Evenness effects on Px male pupal weight
+
+
+d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Px" & d.even$Sex=="m"),]
+p3 <- ggplot(d.temp, aes(x=Evenness, y=Pupal.weight.ST)) +
+  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
+  geom_jitter(width=0.03, color=pal[3], shape=symb[3], cex=2) +
+  geom_boxplot(width=0.075, notch = FALSE, aes(group = cut_width(Evenness, 0.2), alpha = 0.8), outlier.shape = NA)
+p3b <- p3 + ylab("M Pupal Weight") +
+  xlab("") +
+  geom_smooth(method="lm", col=pal[3], aes(group=1), fill=NA) +
+  scale_x_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
+  #scale_y_continuous(breaks=c(0, 0.2, 0.4, 0.6, 0.8, 1, 1.2), labels=c("0","0.2","0.4","0.6", "0.8", "1", "1.2"), limits=c(0,1.2)) +
+  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
+  theme(legend.position="none") +
+  labs(subtitle="(C)")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.key = element_rect(colour = "transparent", fill = "white"))
+p3b
+
+### (D) SD effects on Hz female development 
+
+d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Hz" & d.even$Sex=="f"),]
+d.temp$SD <- factor(d.temp$SD,levels(d.temp$SD)[c(2,3,1)]) #re-order factor levels
+p4 <- ggplot(d.temp, aes(x=SD, y=Days.to.pupation.ST.inv)) +
+  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
+  geom_jitter(width=0.2, color=pal[2], shape=symb[2], cex=2) +
+  geom_boxplot(width=0.5, notch = FALSE, alpha=0.5, outlier.shape = NA)
+p4b <- p4 + ylab("F Dev Speed") +
+  xlab("") +
+  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
+  theme(legend.position="none") +
+  scale_x_discrete(labels=c("Low", "Med", "High")) +
+  scale_y_continuous(limits=c(0.6,1.2)) +
+  annotate("text", label = "A", x = 1, y = 1.15, size=10) +
+  annotate("text", label = "A", x = 2, y = 1.15, size=10) +
+  annotate("text", label = "B", x = 3, y = 1.15, size=10)+
+  labs(subtitle="(D)")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.key = element_rect(colour = "transparent", fill = "white"))
+p4b
+
+### (E) SD effects on Sf female development 
+
+d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Sf" & d.even$Sex=="f"),]
+d.temp$SD <- factor(d.temp$SD,levels(d.temp$SD)[c(2,3,1)]) #re-order factor levels
+p5 <- ggplot(d.temp, aes(x=SD, y=Days.to.pupation.ST.inv)) +
+  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
+  geom_jitter(width=0.2, color=pal[4], shape=symb[4], cex=2) +
+  geom_boxplot(width=0.5, notch = FALSE, alpha=0.5, outlier.shape = NA)
+p5b <- p5 + ylab("F Dev Speed") +
+  xlab("Structural Diversity") +
+  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
+  theme(legend.position="none") +
+  scale_x_discrete(labels=c("Low", "Med", "High")) +
+  scale_y_continuous(limits=c(0.25,1.25)) +
+  annotate("text", label = "A", x = 1, y = 1.2, size=10) +
+  annotate("text", label = "A", x = 2, y = 1.2, size=10) +
+  annotate("text", label = "B", x = 3, y = 1.2, size=10)+
+  labs(subtitle="(E)")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.key = element_rect(colour = "transparent", fill = "white"))
+p5b
+
+
+
+### (F) SD effects on Hz male development 
+
+d.temp <- d.even[which(d.even$Treatment != "C" & d.even$Species=="Hz" & d.even$Sex=="m"),]
+d.temp$SD <- factor(d.temp$SD,levels(d.temp$SD)[c(2,3,1)]) #re-order factor levels
+p6 <- ggplot(d.temp, aes(x=SD, y=Days.to.pupation.ST.inv)) +
+  geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
+  geom_jitter(width=0.2, color=pal[2], shape=symb[2], cex=2) +
+  geom_boxplot(width=0.5, notch = FALSE, alpha=0.5, outlier.shape = NA)
+p6b <- p6 + ylab("M Dev Speed") +
+  xlab("") +
+  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
+  theme(legend.position="none") +
+  scale_x_discrete(labels=c("Low", "Med", "High")) +
+  scale_y_continuous(limits=c(0.6,1.2)) +
+  annotate("text", label = "A", x = 1, y = 1.15, size=10) +
+  annotate("text", label = "A", x = 2, y = 1.15, size=10) +
+  annotate("text", label = "B", x = 3, y = 1.15, size=10)+
+  labs(subtitle="(F)")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.key = element_rect(colour = "transparent", fill = "white"))
+p6b
+
+
+#To get a legend for insects
+d.temp <- filter (d.rich, Treatment != "C", !is.na(Pupal.weight.ST))
+labs <- c(expression(paste(italic(" C.pomonella   "))),
+          expression(paste(italic(" H. zea   "))),
+          expression(paste(italic(" P. xylostella  "))), 
+          expression(paste(italic(" S. frugiperda  "))))
+
+p.temp <- ggplot(d.temp, aes(x=Richness, y=Pupal.weight.ST)) +
+  geom_jitter(width=0.3, height=0.3, aes(shape=Species, col=Species), size=6)
+
+p.temp.b <- p.temp + ylab("Standardized Pupal Weight") +
+  theme(text = element_text(size = 35), plot.margin=unit(c(1,1,1,1), "cm")) +
+  scale_shape_manual(values = symb, labels=labs) + 
+  scale_color_manual(values = pal, labels=labs) +
+  theme(legend.position="bottom", legend.title=element_blank())+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.key = element_rect(colour = "transparent", fill = "white"))
+l1 <- get_legend(p.temp.b)
+p.temp.b
+
+
+
+
+tiff(height=1050, width=1500, filename="./Outputs/Figures/FigS6_EvennessIndivEffects.tiff", type="cairo")
+lay <- rbind(c(1,2,3),  #graphs
+             c(4,5,6),  #graphs
+             c(7,7,7))   #legend
+grid.arrange(p1b, p2b, p3b, p4b, p5b, p6b, l1,
+             nrow=3, ncol=3, widths=c(500,500, 500), 
+             heights=c(500, 500, 50),
+             layout_matrix=lay)
+dev.off()
+
+cairo_pdf(height=11.9, width=17, filename="./Outputs/Figures/FigS6_EvennessIndivEffects.pdf")
+lay <- rbind(c(1,2,3),  #graphs
+             c(4,5,6),  #graphs
+             c(7,7,7))   #legend
+grid.arrange(p1b, p2b, p3b, p4b, p5b, p6b, l1,
+             nrow=3, ncol=3, widths=c(500,500, 500), 
+             heights=c(500, 500, 50),
+             layout_matrix=lay)
+dev.off()
+
+
+
+
+#-----------------------------------------------------------------------------
+###Figure S7: effects of evenness on number of organisms affected 
+#--------------------------
+
+load("./Outputs/Workspaces/FinalAnalyses_Evenness_NumEffects")
+
+plot(jitter(NumHerbsAffected) ~ jitter(Evenness), data=NumEffects.even)
+abline(lm(NumHerbsAffected ~ Evenness, data=NumEffects.even))
+
+d.temp <- NumEffects.even
+p1 <- ggplot(d.temp, aes(x=Evenness, y=NumHerbsAffected)) +
+  geom_jitter(width=0.03, height=0.15, cex=4, col=dot_col) +
+  geom_smooth(method="lm", col="#6B244C", aes(group=1)) +
+  ylab("Numb. Herbivores Affected") + xlab("Evenness") +
+  scale_x_continuous(breaks=c(0.2,0.4,0.6,0.8,1.0), labels=c("0.2","0.4","0.6", "0.8", "1.0")) +
+  theme(text = element_text(size = 35))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+p1
+
+
+
+
+tiff(height=500, width=600, filename="./Outputs/Figures/FigS7_NumbEffects_even.tiff", type="cairo")
+p1
+dev.off()
+
+cairo_pdf(height=8, width=9, family="sans",filename="./Outputs/Figures/FigS7_NumbEffects_even.pdf")
+p1
+dev.off()
+
+
+
+
+

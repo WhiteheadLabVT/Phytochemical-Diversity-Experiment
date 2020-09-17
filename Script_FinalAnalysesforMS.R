@@ -7,7 +7,6 @@ library(MuMIn)
 library(stringr)
 library(ggplot2)
 library(tidyr)
-library(mblm) #for non-parametric regression
 library(MASS)
 library(sjstats) #for ICC (intraclass correlation coefficient) calcs
 
@@ -153,6 +152,8 @@ hist(counts$n.surv[which(counts$Treatment != "C")])
 range(counts$n.surv[which(counts$Treatment != "C")])
 sum(counts$n.surv)
 sum(counts$n.pw)
+sum(counts$n.surv[which(counts$Treatment != "C")])
+sum(counts$n.pw[which(counts$Treatment != "C")])
 
 counts2 <- pivot_wider(counts[1:3], names_from = Species, values_from = n.surv) #total insects
 counts3 <- pivot_wider(counts[c(1:2,4)], names_from = Species, values_from = n.pw)  #survivors
@@ -275,13 +276,13 @@ m1.all.PW <- lmer(Pupal.weight.ST ~ SD*Richness*Species*Sex + (1|Treatment) + (1
                   data = d.temp, na.action=na.fail, REML="FALSE")
 d1.all.PW <- dredge(m1.all.PW)
 s <- subset(d1.all.PW, delta < 4)
-s
+s  #use for table S3
 d1.all.PW.avg <- model.avg(d1.all.PW, subset = delta < 4, fit=TRUE)
-summary(d1.all.PW.avg)
+summary(d1.all.PW.avg)  #use for table S4
 m1.top.PW <- lmer(Pupal.weight.ST ~ Richness + Sex*Species + (1|Treatment) + (1|exp/TrayID/CupID), 
                   data = d.temp, na.action=na.fail) 
 summary(m1.top.PW)
-drop1(m1.top.PW, test="Chisq")
+drop1(m1.top.PW, test="Chisq") #significant positive effect of richness in top model
 
 plot(d.temp$Pupal.weight.ST ~ d.temp$Richness)
 abline(lm(d.temp$Pupal.weight.ST ~ d.temp$Richness))
@@ -297,9 +298,9 @@ m1.all.dTp <- lmer(Days.to.pupation.ST.inv ~ SD*Richness*Species*Sex + (1|Treatm
                    data = d.temp, na.action=na.fail, REML="FALSE")
 d1.all.dTp <- dredge(m1.all.dTp)
 s <- subset(d1.all.dTp, delta < 4)
-s
+s  #use for table S3
 d1.all.dTp.avg <- model.avg(d1.all.dTp, subset = delta < 4, fit=TRUE)
-summary(d1.all.dTp.avg)
+summary(d1.all.dTp.avg)  #use for table S4
 
 m1.top.dTp <- lmer(Days.to.pupation.ST.inv ~ Richness + Sex*Species + Richness*Species + (1|Treatment) + (1|exp/TrayID/CupID), 
                    data = d.temp, na.action=na.fail) 
@@ -323,9 +324,9 @@ m1.all.S <- lmer(PropSurv.ST ~ SD*Richness*Species + (1|Treatment) + (1|exp),
                  data = d.temp, na.action=na.fail, REML="FALSE")
 d1.all.S <- dredge(m1.all.S)
 s <- subset(d1.all.S, delta < 4)
-s
-d1.all.S.avg <- model.avg(d1.all.S, subset = delta < 4, fit=TRUE)
-summary(d1.all.S.avg)
+s #use for table S3
+d1.all.S.avg <- model.avg(d1.all.S, subset =  delta < 4, fit=TRUE)
+summary(d1.all.S.avg)  #use for table S4
 
 #OVerall only species is coming out as significant. Richness is in 3/5 top models, sometimes
 #positive sometimes negative
@@ -678,7 +679,7 @@ summary(d1.all.f)
 
 d1.all.avg <- model.avg(d1.all.f, fit=TRUE)
 
-summary(d1.all.avg)
+summary(d1.all.avg) #use for S4
 
 m1.top.f <- lmer(dAbs.ST ~  SD*Richness*Fungi + (1|Treatment) + (1|Plate), 
                    data = d.temp, na.action=na.fail) 
@@ -961,6 +962,7 @@ m1.Hz
 m1.Sf
 m1.Cp
 m1.Px
+
 
 #marginally significant effect for Px; checking plot
 plot(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Px" & Zs.PW$Richness !=1),])
@@ -1307,11 +1309,11 @@ sum(Zs.F$syn)
 sum(Zs.PW$ant)
 sum(Zs.DtP$ant)
 sum(Zs.F$ant)
-
+#these numbers are mentioned in the discussion
 
 #Save workspace
 #note for this save I just ran the data cleaning and standardization section and the synergy section
-save.image("./Outputs/Workspaces/WS_FinalAnalysesforMS_synergy")
+save.image("./Outputs/Workspaces/FinalAnalyses_Pred1d_synergy")
 
 #export data for table 2
 write.csv(m.sum.RvsS, "./Outputs/Tables/TableS6_Pred1d_synergy.csv")
@@ -1771,13 +1773,13 @@ m.sum.SvsM <- rbind(m.sum.SvsM,
                     c("F", "Sclerotinia", m1.Sclerotinia$coefficients[2,1], m1.Sclerotinia$coefficients[2,3], m1.Sclerotinia$coefficients[2,4]))
 
 
-#export data for table 2
+#export data for table S7
 write.csv(m.sum.SvsM, "./Outputs/Tables/TableS7_Pred1e_singletonsVSmix.csv")
 
 
 #Save workspace
 #note for this save I just ran the data cleaning and standardization section and the singleton vs mixture section
-save.image("./Outputs/Workspaces/Pred1e_singletonsVSmix")
+save.image("./Outputs/Workspaces/FinalAnalyses_Pred1e_singletonsVSmix")
 
 
 
@@ -1896,8 +1898,6 @@ abline(lm(NumOrgAffected ~ Richness, data=d.sum2))
 plot(jitter(TotEffects) ~ jitter(Richness), data=d.sum2)
 abline(lm(TotEffects ~ Richness, data=d.sum2))
 
-#plot(jitter(NumEffectsTot) ~ jitter(Richness), data=d.sum2)
-#abline(lm(NumEffectsTot ~ Richness, data=d.sum2))
 
 
 #checking distribution of response variable
@@ -1943,7 +1943,6 @@ d.sum2.means  #use this to report effect size in paper. Increased by 37%  (5-3.6
 
 #Some plots
 plot(jitter(NumOrgAffected) ~ SD, data=d.sum2)
-abline(lm(NumOrgAffected ~ Richness, data=d.sum2))
 
 m1 <- glm(NumOrgAffected ~ SD, data=d.sum2)
 summary(m1)
@@ -1960,7 +1959,7 @@ d.sum2.means2  #use this to report effect size in paper.
 
 #save values for fig
 NumEffects.rich <- d.sum2
-save.image("./Outputs/Workspaces/Pred2a-2b_NumEffects")
+save.image("./Outputs/Workspaces/FinalAnalyses_Pred2a-2b_NumEffects")
 
 
 #-------------------------------------------------------------------------
@@ -2021,12 +2020,6 @@ d.sum <- d.temp %>%
             DtP.p = t.test.p(Days.to.pupation.ST.inv, mu=1),
             DtP.CI.low = CI.low(Days.to.pupation.ST.inv, mu=1),
             DtP.CI.high = CI.high(Days.to.pupation.ST.inv, mu=1))
-
-#d.sum$PW.CI.low <- d.sum$PW.avg - (1.96*d.sum$PW.SD/sqrt(d.sum$PW.n))
-#d.sum$PW.CI.high <- d.sum$PW.avg + (1.96*d.sum$PW.SD/sqrt(d.sum$PW.n))
-
-#d.sum$DtP.CI.low <- d.sum$DtP.avg - (1.96*d.sum$DtP.SD/sqrt(d.sum$DtP.n))
-#d.sum$DtP.CI.high <- d.sum$DtP.avg + (1.96*d.sum$DtP.SD/sqrt(d.sum$DtP.n))
 
 
 
@@ -2133,9 +2126,6 @@ d.sum.F <- d.temp %>%
             F.CI.low = CI.low(dAbs.ST, mu=1),
             F.CI.high = CI.high(dAbs.ST, mu=1))
 
-#d.sum.F$F.CI.low <- d.sum.F$F.avg - (1.96*d.sum.F$F.SD/sqrt(d.sum.F$F.n))
-#d.sum.F$F.CI.high <- d.sum.F$F.avg + (1.96*d.sum.F$F.SD/sqrt(d.sum.F$F.n))
-
 
 ##Add binary variable that indicates whether there is a significant effect (i.e. CI
 #crosses 1) for each treatment
@@ -2189,36 +2179,32 @@ m.PW.1 <- lmer(Pupal.weight.ST ~ Species*Treatment + (1|exp/TrayID), data=d.temp
 m.PW.2 <- lmer(Pupal.weight.ST ~ Species+Treatment + (1|exp/TrayID), data=d.temp)
 summary(m.PW.1)
 plot(m.PW.1)
-drop1(m.PW.1, test="Chisq")
+drop1(m.PW.1, test="Chisq")  #use for Table S8
 drop1(m.PW.2, test="Chisq")
 
 m.DtP.1 <- lmer(Days.to.pupation.ST ~ Species*Treatment + (1|exp), data=d.temp)
 m.DtP.2 <- lmer(Days.to.pupation.ST ~ Species+Treatment + (1|exp), data=d.temp)
 summary(m.DtP.1)
 plot(m.DtP.1)
-drop1(m.DtP.1, test="Chisq")
+drop1(m.DtP.1, test="Chisq") #use for Table S8
 drop1(m.DtP.2, test="Chisq")
 
 d.temp <- d.rich.PS
 hist(d.temp$PropSurv.ST)
-m.S.1 <- lm(PropSurv.ST ~ Species*Treatment + (1|exp), data=d.temp)
-m.S.2 <- lm(PropSurv.ST ~ Species+Treatment + (1|exp), data=d.temp)
+m.S.1 <- lmer(PropSurv.ST ~ Species*Treatment + (1|exp), data=d.temp)
+m.S.2 <- lmer(PropSurv.ST ~ Species+Treatment + (1|exp), data=d.temp)
 summary(m.S.1)
-drop1(m.S.1, test="Chisq")
+drop1(m.S.1, test="Chisq") #Use for Table S8
 drop1(m.S.2, test="Chisq")
 
 
 d.temp <- d.fungi2[which(d.fungi2$Richness !=0),] 
 hist(d.temp$dAbs.ST)
-
-
-#convergence issues due to the random effects structure they go away when I drop
-#included Plate, but results are not substantially different either way
 m.F.1 <- lmer(dAbs.ST ~ Fungi*Treatment + (1|Plate), data=d.temp)
 m.F.2 <- lmer(dAbs.ST ~ Fungi+Treatment + (1|Plate), data=d.temp)
 summary(m.F.1)
 plot(m.F.1)
-drop1(m.F.1, test="Chisq")
+drop1(m.F.1, test="Chisq") #Use for Table S8
 drop1(m.F.2, test="Chisq")
 
 
@@ -2239,7 +2225,7 @@ summary(m1.PW)
 s1.PW <- stepAIC(m1.PW, direction = "both", trace = FALSE)
 summary(s1.PW)
 #plot(s1.PW)
-tbl.3b.PW <- data.frame(summary(s1.PW)$coefficients)
+tbl.S9.PW <- data.frame(summary(s1.PW)$coefficients)
 
 
 #for days to pupation
@@ -2250,7 +2236,7 @@ m1.DtP <- lm(Days.to.pupation.ST.inv ~ ChA_pa + CA_pa + pCA_pa + FA_pa + GA_pa +
 s1.DtP <- stepAIC(m1.DtP, direction = "both", trace = FALSE)
 summary(s1.DtP)
 #plot(s1.DtP)
-tbl.3b.DtP <- data.frame(summary(s1.DtP)$coefficients)
+tbl.S9.DtP <- data.frame(summary(s1.DtP)$coefficients)
 
 #for survival
 d.temp <- filter (d.rich.PS, Treatment != "C", !is.na(PropSurv.ST))
@@ -2261,7 +2247,7 @@ m1.S <- lm(PropSurv.ST ~ ChA_pa + CA_pa + pCA_pa + FA_pa + GA_pa + SA_pa + GeA_p
 s1.S <- stepAIC(m1.S, direction = "both", trace = FALSE)
 summary(s1.S)
 #plot(s1.S)
-tbl.3b.S <- data.frame(summary(s1.S)$coefficients)
+tbl.S9.S <- data.frame(summary(s1.S)$coefficients)
 
 
 #for fungal growth rates
@@ -2273,8 +2259,10 @@ m1.F <- lm(dAbs.ST ~ ChA_pa + CA_pa + pCA_pa + FA_pa + GA_pa + SA_pa + GeA_pa + 
 s1.F <- stepAIC(m1.F, direction = "both", trace = FALSE)
 summary(s1.F)
 #plot(s1.DtP)
-tbl.3b.F <- data.frame(summary(s1.F)$coefficients)
+tbl.S9.F <- data.frame(summary(s1.F)$coefficients)
 
+
+#Use tbl.S9.-  PW, DtP, S, and F for Table S9
 
 #------------------------------------------------------------------
 ####   Little or no variation is explained by specific mixture (Prediction 3c)
@@ -2342,7 +2330,7 @@ m2.Hz.S <- glmer(Surv ~ (1|exp), data=d.temp, family=binomial)
 summary(m2.Hz.S)
 anova(m1.Hz.S, m2.Hz.S)  #model is better with treatment
 
-tbl.4.Hz <- data.frame(Sp="Hz", metric=c("PW", "DtP", "S"), 
+tbl.S10.Hz <- data.frame(Sp="Hz", metric=c("PW", "DtP", "S"), 
                        var=c(vc.Hz.PW$vcov[1], vc.Hz.DtP$vcov[1], vc.Hz.S$vcov[1]), 
                        percVar=c(vc.Hz.PW$percVar[1], vc.Hz.DtP$percVar[1], vc.Hz.S$percVar[1]), 
                        Chisq=c(anova(m1.Hz.PW, m2.Hz.PW)$Chisq[2],anova(m1.Hz.DtP, m2.Hz.DtP)$Chisq[2],
@@ -2388,7 +2376,7 @@ m2.Sf.S <- glmer(Surv ~ (1|exp), data=d.temp, family=binomial)
 summary(m2.Sf.S)
 anova(m1.Sf.S, m2.Sf.S)  #model is better with treatment
 
-tbl.4.Sf <- data.frame(Sp="Sf", metric=c("PW", "DtP", "S"), 
+tbl.S10.Sf <- data.frame(Sp="Sf", metric=c("PW", "DtP", "S"), 
                        var=c(vc.Sf.PW$vcov[1], vc.Sf.DtP$vcov[1], vc.Sf.S$vcov[1]), 
                        percVar=c(vc.Sf.PW$percVar[1], vc.Sf.DtP$percVar[1], vc.Sf.S$percVar[1]), 
                        Chisq=c(anova(m1.Sf.PW, m2.Sf.PW)$Chisq[2],anova(m1.Sf.DtP, m2.Sf.DtP)$Chisq[2],
@@ -2433,7 +2421,7 @@ m2.Cp.S <- glmer(Surv ~ (1|exp), data=d.temp, family=binomial)
 summary(m2.Cp.S)
 anova(m1.Cp.S, m2.Cp.S)  #model is NOT better with treatment
 
-tbl.4.Cp <- data.frame(Sp="Cp", metric=c("PW", "DtP", "S"), 
+tbl.S10.Cp <- data.frame(Sp="Cp", metric=c("PW", "DtP", "S"), 
                        var=c(vc.Cp.PW$vcov[1], vc.Cp.DtP$vcov[1], vc.Cp.S$vcov[1]), 
                        percVar=c(vc.Cp.PW$percVar[1], vc.Cp.DtP$percVar[1], vc.Cp.S$percVar[1]), 
                        Chisq=c(anova(m1.Cp.PW, m2.Cp.PW)$Chisq[2],anova(m1.Cp.DtP, m2.Cp.DtP)$Chisq[2],
@@ -2478,7 +2466,7 @@ m2.Px.S <- glmer(Surv ~ (1|exp), data=d.temp, family=binomial)
 summary(m2.Px.S)
 anova(m1.Px.S, m2.Px.S)  #model is better with treatment
 
-tbl.4.Px <- data.frame(Sp="Px", metric=c("PW", "DtP", "S"), 
+tbl.S10.Px <- data.frame(Sp="Px", metric=c("PW", "DtP", "S"), 
                        var=c(vc.Px.PW$vcov[1], vc.Px.DtP$vcov[1], vc.Px.S$vcov[1]), 
                        percVar=c(vc.Px.PW$percVar[1], vc.Px.DtP$percVar[1], vc.Px.S$percVar[1]), 
                        Chisq=c(anova(m1.Px.PW, m2.Px.PW)$Chisq[2],anova(m1.Px.DtP, m2.Px.DtP)$Chisq[2],
@@ -2540,7 +2528,7 @@ summary(m2.S)
 anova(m1.S, m2.S)  #model is better with treatment
 
 
-tbl.4.F <- data.frame(Sp=c("B", "C", "P", "S"), metric="GR", 
+tbl.S10.F <- data.frame(Sp=c("B", "C", "P", "S"), metric="GR", 
                        var=c(vc.B$vcov[1], vc.C$vcov[1], vc.P$vcov[1], vc.S$vcov[1]), 
                        percVar=c(vc.B$percVar[1], vc.C$percVar[1], vc.P$percVar[1],  vc.S$percVar[1]), 
                        Chisq=c(anova(m1.B, m2.B)$Chisq[2],anova(m1.C, m2.C)$Chisq[2],
@@ -2548,15 +2536,15 @@ tbl.4.F <- data.frame(Sp=c("B", "C", "P", "S"), metric="GR",
                        P=c(anova(m1.B, m2.B)$Pr[2], anova(m1.C, m2.C)$Pr[2],
                            anova(m1.P, m2.P)$Pr[2], anova(m1.S, m2.S)$Pr[2]))
 
-tbl.4 <- rbind(tbl.4.Hz, tbl.4.Sf, tbl.4.Cp, tbl.4.Px, tbl.4.F)
-tbl.4 <- tbl.4[c(1,4,7,10,2,5,8,11,3,6,9,12, 13:16),]
-tbl.4$percVar <- tbl.4$percVar*100
+tbl.S10 <- rbind(tbl.S10.Hz, tbl.S10.Sf, tbl.S10.Cp, tbl.S10.Px, tbl.S10.F)
+tbl.S10 <- tbl.S10[c(1,4,7,10,2,5,8,11,3,6,9,12, 13:16),]
+tbl.S10$percVar <- tbl.S10$percVar*100
 
-write.csv(tbl.4, "Pred3c.csv")
+write.csv(tbl.S10, "./Outputs/Tables/TableS10_Pred3c_TreatmentEffects.csv")
 
 
 #---------------------------------------------------------------------
-# Supplemental: Effects of eveness and SD on performance
+# Supplemental: Effects of evenness and SD on performance
 #--------------------------------
 
 load("./Outputs/Workspaces/StandardizedData")
@@ -2574,9 +2562,9 @@ m1.E.all.PW <- lmer(Pupal.weight.ST ~ SD*Evenness*Species*Sex + (1|Treatment) + 
                     data = d.temp, na.action=na.fail, REML="FALSE")
 d1.E.all.PW <- dredge(m1.E.all.PW)
 s <- subset(d1.E.all.PW, delta < 4)
-s
+s  #use for Table S12
 d1.E.all.PW.avg <- model.avg(d1.E.all.PW, subset = delta < 4, fit=TRUE)
-summary(d1.E.all.PW.avg)
+summary(d1.E.all.PW.avg)  #use for Table S13
 m1.E.top.PW <- lmer(Pupal.weight.ST ~ Evenness + SD + Sex + Species + Evenness*Sex + Evenness*Species +
                       Sex*Species + Evenness*Sex*Species + (1|Treatment) + (1|exp/TrayID/CupID), 
                     data = d.temp, na.action=na.fail) 
@@ -2596,9 +2584,9 @@ m1.E.all.dTp <- lmer(Days.to.pupation.ST.inv ~ SD*Evenness*Species*Sex + (1|Trea
                      data = d.temp, na.action=na.fail, REML="FALSE")
 d1.E.all.dTp <- dredge(m1.E.all.dTp)
 s <- subset(d1.E.all.dTp, delta < 4)
-s
+s  #use for Table S12
 d1.E.all.dTp.avg <- model.avg(d1.E.all.dTp, subset = delta < 4, fit=TRUE)
-summary(d1.E.all.dTp.avg)
+summary(d1.E.all.dTp.avg) #Use for Table S13
 
 m1.E.top.dTp <- lmer(Days.to.pupation.ST.inv ~ Evenness*Species + SD*Species + Sex*Species + (1|Treatment) + (1|exp/TrayID/CupID), 
                      data = d.temp, na.action=na.fail) 
@@ -2621,9 +2609,9 @@ m1.E.all.S <- lmer(PropSurv.ST ~ SD*Evenness*Species + (1|Treatment) + (1|exp),
                    data = d.temp, na.action=na.fail, REML="FALSE")
 d1.E.all.S <- dredge(m1.E.all.S)
 s <- subset(d1.E.all.S, delta < 4)
-s
+s   #Use for Table S12
 d1.E.all.S.avg <- model.avg(d1.E.all.S, subset = delta < 4, fit=TRUE)
-summary(d1.E.all.S.avg)
+summary(d1.E.all.S.avg)  #Use for Table S13
 
 #OVerall only species is coming out as significant. Evenness is in 3/5 top models, sometimes
 #positive sometimes negative
@@ -2690,11 +2678,7 @@ cld(m2.E.T, level = 0.05) #development faster on high SD compared to low or med
 plot(d.temp$Days.to.pupation.ST.inv ~ d.temp$SD)
 
 #survival
-##$$$$$$ TO   DO   need to drop all glmer code, and also post-hocs here if we stick with proportion
 d.temp <- filter (d.even.PS, Species=="Hz" & Treatment != "C")
-PS <- cbind(d.temp$alive, d.temp$dead)
-m1.E.Hz.Surv <- glmer(PS ~ SD*Evenness + (1|exp), data = d.temp, family=binomial)
-m2.E.Hz.Surv <- glmer(PS ~ SD+Evenness + (1|exp), data = d.temp, family=binomial)
 m1.E.Hz.Surv <- lmer(PropSurv.ST ~ SD*Evenness + (1|exp), data = d.temp)
 m2.E.Hz.Surv <- lmer(PropSurv.ST ~ SD+Evenness + (1|exp), data = d.temp)
 d1 <- drop1(m1.E.Hz.Surv, test="Chisq")
@@ -2702,7 +2686,6 @@ d2 <- drop1(m2.E.Hz.Surv, test="Chisq")  #no effects
 d1
 d2
 m.sum.E <- rbind(m.sum.E, c(d1[2,3], d1[2,4], d2[3,3], d2[3,4], d2[2,3], d2[2,4]))
-
 
 
 
@@ -2769,9 +2752,6 @@ plot(d.temp$Days.to.pupation.ST.inv ~ d.temp$SD)
 
 #survival
 d.temp <- filter (d.even.PS, Species=="Sf" & Treatment != "C")
-PS <- cbind(d.temp$alive, d.temp$dead)
-m1.E.Sf.Surv <- glmer(PS ~ SD*Evenness + (1|exp), data = d.temp, family=binomial, nAGQ=100)
-m2.E.Sf.Surv <- glmer(PS ~ SD+Evenness + (1|exp), data = d.temp, family=binomial, nAGQ=100)
 m1.E.Sf.Surv <- lmer(PropSurv.ST ~ SD*Evenness + (1|exp), data = d.temp)
 m2.E.Sf.Surv <- lmer(PropSurv.ST ~ SD+Evenness + (1|exp), data = d.temp)
 d1 <- drop1(m1.E.Sf.Surv, test="Chisq")
@@ -2833,9 +2813,6 @@ summary(m2.E.Cp.dTp.m)
 
 #survival
 d.temp <- filter (d.even.PS, Species=="Cp" & Treatment != "C")
-PS <- cbind(d.temp$alive, d.temp$dead)
-m1.E.Cp.Surv <- glmer(PS ~ SD*Evenness + (1|exp), data = d.temp, family=binomial, nAGQ=100)
-m2.E.Cp.Surv <- glmer(PS ~ SD+Evenness + (1|exp), data = d.temp, family=binomial, nAGQ=100)
 m1.E.Cp.Surv <- lmer(PropSurv.ST ~ SD*Evenness + (1|exp), data = d.temp)
 m2.E.Cp.Surv <- lmer(PropSurv.ST ~ SD+Evenness + (1|exp), data = d.temp)
 d1 <- drop1(m1.E.Cp.Surv, test="Chisq")
@@ -2897,9 +2874,6 @@ m.sum.E <- rbind(m.sum.E, c(d1[2,3], d1[2,4], d2[3,3], d2[3,4], d2[2,3], d2[2,4]
 
 #survival
 d.temp <- filter (d.even.PS, Species=="Px" & Treatment != "C")
-PS <- cbind(d.temp$alive, d.temp$dead)
-m1.E.Px.Surv <- glmer(PS ~ SD*Evenness + (1|exp), data = d.temp, family=binomial, nAGQ=100)
-m2.E.Px.Surv <- glmer(PS ~ SD+Evenness + (1|exp), data = d.temp, family=binomial, nAGQ=100)
 m1.E.Px.Surv <- lmer(PropSurv.ST ~ SD*Evenness + (1|exp), data = d.temp)
 m2.E.Px.Surv <- lmer(PropSurv.ST ~ SD+Evenness + (1|exp), data = d.temp)
 d1 <- drop1(m1.E.Px.Surv, test="Chisq")
@@ -2908,11 +2882,11 @@ d1
 d2
 m.sum.E <- rbind(m.sum.E, c(d1[2,3], d1[2,4], d2[3,3], d2[3,4], d2[2,3], d2[2,4]))
 
-#See results table
-m.sum.E
+#Save results table
+write.csv(m.sum.E, file="./Outputs/Tables/TableS14_Evenness_Performance.csv")
 
 #Save workspace
-#save.image("WS_FinalAnalysesforMS")
+save.image("./Outputs/Workspaces/FinalAnalyses_Evenness_Performance")
 
 
 
@@ -3027,17 +3001,11 @@ plot(m3)
 
 hist(resid(m1))  #these actually look pretty good
 
-#Alternatively, could try a non-parametric test
-m4 <- mblm(NumEffectsTot ~ Evenness, data=d.sum2)
-summary(m4)
-#getting warnings with this about "ties" and "zeros" 
-#these test rely on ranks, and ranks cannot be computed between points that have the exact
-#same value. 
-
-AIC(m1, m2, m3, m4)
+AIC(m1, m2, m3)
 
 #Seems the best test is the gaussian, but all seem to be giving qualitatively similar results
-
+#Use gaussian for results
+summary(m1)
 
 #---Effects of SD on number of effects
 
@@ -3056,13 +3024,9 @@ d.sum2.means2 <- d.sum2 %>%
 d.sum2.means2  
 
 
-#Save data for fig
+#Save workspace for fig
 NumEffects.even <- d.sum2 
-
-write.csv(NumEffects.even, ".Outputs/Tables/NumEffects_even.csv")
-
-
-
+save.image("./Outputs/Workspaces/FinalAnalyses_Evenness_NumEffects")
 
 
 
