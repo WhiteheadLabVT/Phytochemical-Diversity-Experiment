@@ -245,7 +245,6 @@ counts2 <- pivot_wider(counts, names_from = Fungi, values_from = n)
 
 
 
-
 #Saving this workspace. Many other analyses below will depend on these standardized
 #variables. 
 
@@ -1313,6 +1312,516 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Pred1d_synergy")
 #export data for table 2
 write.csv(m.sum.RvsS, "./Outputs/Tables/TableS6_Pred1d_synergy.csv")
 
+#----------------------null models------
+
+#During the review process, there was some concern that these models
+#rely on using the output from one analysis to inform the next, and that
+#it is not clear how error and variance propogate through the models. 
+#It was suggested that we create a set of null models that use a 
+#randomized dataset to compare the output to those models 
+
+#This section is a full repeat of the analysis above for Prediction 1d, but
+#with each of the response variables in the dataset completely randomized
+
+#make table to store stats for richness vs synergy tests
+m.sum.RvsS <- data.frame(Metric=NA, Sp=NA, Slope=NA, Z=NA, P=NA)
+
+#for pupal weight
+
+d.temp <- d.rich
+
+#RANDOMIZING PUPAL WEIGHT
+d.temp$Pupal.weight <- sample(d.temp$Pupal.weight)
+
+Zs.PW <- data.frame(Species=factor(), Treatment=factor(), Zt=numeric(), Zt.SE=numeric())
+for(i in 1:length(levels(d.temp$Treatment))){
+  if(levels(d.temp$Treatment)[i] != "C"){
+    Tx <- levels(d.temp$Treatment)[i] 
+    d <- d.temp[which(d.temp$Treatment==Tx),]
+    e <- as.character(unique(d$exp))
+    d2 <- d.temp[which(d.temp$Treatment==Tx | d.temp$Treatment=="C"),]
+    d2 <- filter(d2, exp %in% e)
+    
+    for(j in 1:length(levels(d.temp$Species))){
+      Sp <- levels(d.temp$Species)[j]
+      d3 <- d2[which(d2$Species==Sp),]
+      d3$Treatment <- factor(d3$Treatment, levels=c("C", Tx))
+      m.PW <- lm(Pupal.weight ~ Treatment, data=d3)
+      b <- coef(summary(m.PW))[2,1]
+      b.SE <- coef(summary(m.PW))[2,2]
+      newrow = data.frame(Species=Sp, Treatment=Tx, Zt=b, Zt.SE=b.SE)
+      Zs.PW <- rbind(Zs.PW, newrow)
+    }
+  }
+}
+
+
+##Now alculate Zadd and variance for each mixture
+#from Tallarida, the variance of Zadd is
+#var_Zadd= f^2 * V_A + (1-f)^2 * V_B
+#where f=the fraction of each compound in mix
+
+
+Zs.PW$Zadd <- NA
+Zs.PW$Zadd.SE <- NA
+
+#To calculate Zadd, need to know the conc of each compound in each treatment.
+#Zs.PW <- left_join(Zs.PW, distinct(d.temp[,c(2, 12:25)], Treatment, .keep_all=TRUE), by="Treatment")
+
+Tx.Comp <- distinct(d.temp[,c(2, 12:25)], Treatment, .keep_all=TRUE)
+Tx.Comp$Treatment <- as.character(Tx.Comp$Treatment)
+
+for(i in 1:length(Zs.PW$Zadd)){
+  Zs.PW$Zadd[i] <- 0
+  Zs.PW$Zadd.SE[i] <- 0
+  H <- Zs.PW$Species[i]
+  Tx <- Zs.PW$Treatment[i]
+  for(j in 2:15){
+    C.ID <- colnames(Tx.Comp)[j]
+    e <- Zs.PW$Zt[which(Zs.PW$Treatment==C.ID & Zs.PW$Species==H)]  #effect of indiv compound
+    var <- Zs.PW$Zt.SE[which(Zs.PW$Treatment==C.ID & Zs.PW$Species==H)]^2  ##var of slope from model coef (se^2)  see: https://stackoverflow.com/questions/14960868/how-do-i-print-the-variance-of-an-lm-in-r-without-computing-from-the-standard-er
+    a <- e*(Tx.Comp[which(Tx.Comp$Treatment==Tx),j]/0.5)  ##effect * relative abundance (note total compounds=0.5mg, so dividing by that)
+    #r <- d.temp$Richness[i]
+    b <- var*((Tx.Comp[which(Tx.Comp$Treatment==Tx),j]/0.5))  ##in Tallarida equation the proportions are squared, 
+    #but that gives really weird results with multiple compounds, where the variance estimate gets much lower as you increase in richness
+    ##here I just made the variance a straight additive proportional function of the composition
+    Zs.PW$Zadd[i] <- Zs.PW$Zadd[i] + a
+    Zs.PW$Zadd.SE[i] <- Zs.PW$Zadd.SE[i] + b  #this is a actually generating the variance
+  }
+  Zs.PW$Zadd.SE [i] <- sqrt(Zs.PW$Zadd.SE[i]) #square root to get SE
+}
+
+
+# Define Richness: 0,1,2,4,6,8,10
+Zs.PW$Richness <- NA
+for (i in 1:nrow(Zs.PW)){
+  Zs.PW$Richness[i] <- str_extract(Zs.PW$Treatment[i],'[0-9]+')}
+Zs.PW$Richness[which(is.na(Zs.PW$Richness))] <- 1
+Zs.PW$Richness <- as.numeric(Zs.PW$Richness)
+
+
+#Calculate CIs for Zt and Zadd
+#From Tallarida 2002, total sample size for calculating CI is based on total
+#number of datapoints in drug1, drug 2, and combination all combined
+#So in our case we have N=15 for each compound, plus ~N=5-8 for each mixture
+#so use t-value 1.960 (for large sample size, anything over df=120)
+#So 95% CI is Zadd +/- int
+
+Zs.PW$Zt_upper <- Zs.PW$Zt + (Zs.PW$Zt.SE*1.96)
+Zs.PW$Zt_lower <- Zs.PW$Zt - (Zs.PW$Zt.SE*1.96)
+Zs.PW$Zadd_upper <- Zs.PW$Zadd + (Zs.PW$Zadd.SE*1.96)
+Zs.PW$Zadd_lower <- Zs.PW$Zadd - (Zs.PW$Zadd.SE*1.96)
+
+
+
+#Plots
+
+#divide data
+z1 <- Zs.PW[,c(1:4,7:9)]
+z2 <- Zs.PW[,c(1:2, 5:7, 10:11)]
+z1$Tx <- "obs"
+z2$Tx <- "exp"
+colnames(z1) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
+colnames(z2) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
+
+z3 <- rbind(z1, z2)
+
+z4 <- z3[which(z3$Richness!=1),]
+z4 <- droplevels(z4)
+ggplot(z4[which(z4$Species=="Hz"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Sf"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Cp"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Px"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+
+#Note confidence intervals overlap for every single one!!
+
+
+#or plot diff exp-obs
+#0= no non-additive effects
+#>0 indicates synergy
+#<0 indicates antagonism
+#positive effect of richness on Zdiff would indicate increasing synergy with more complex mixtures
+##non overlapping CI would indicate significant non-additive effects
+
+Zs.PW$diff <- Zs.PW$Zadd-Zs.PW$Zt   
+plot(Zs.PW$diff~ Zs.PW$Richness)
+abline(lm(Zs.PW$diff~ Zs.PW$Richness))
+
+
+##Can test for increase in synergy with increasing richness
+
+m1.Hz <- summary(lm(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Hz" & Zs.PW$Richness !=1),]))  #no synergy
+m1.Sf <- summary(lm(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Sf" & Zs.PW$Richness !=1),]))  #no synergy
+m1.Px <- summary(lm(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Px" & Zs.PW$Richness !=1),]))  #marginal antagonism
+m1.Cp <- summary(lm(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Cp" & Zs.PW$Richness !=1),]))  #no synergy
+m1.Hz
+m1.Sf
+m1.Cp
+m1.Px
+
+##Note, in the main results, there there was a marginal effect for Px where
+#Zdiff increased with richness
+#Here there is a marginal effect for Hz
+
+#marginally significant effect for Hz; checking plot
+plot(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Hz" & Zs.PW$Richness !=1),])
+abline(lm(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Hz" & Zs.PW$Richness !=1),]))
+
+
+#Add stats to summary table
+m.sum.RvsS[1,] <- c("PW", "Hz", m1.Hz$coefficients[2,1], m1.Hz$coefficients[2,3], m1.Hz$coefficients[2,4])
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("PW", "Sf", m1.Sf$coefficients[2,1], m1.Sf$coefficients[2,3], m1.Sf$coefficients[2,4]))
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("PW", "Cp", m1.Cp$coefficients[2,1], m1.Cp$coefficients[2,3], m1.Cp$coefficients[2,4]))
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("PW", "Px", m1.Px$coefficients[2,1], m1.Px$coefficients[2,3], m1.Px$coefficients[2,4]))
+
+
+
+
+
+####Now the same for DtP
+
+d.temp <- d.rich
+d.temp$Days.to.pupation <- sample(d.temp$Days.to.pupation)
+
+#taking the inverse of days to pupation--i.e. "development speed" so that the 
+#directionality of effects is the same for all performance metrics
+#d.temp$Days.to.pupation.inv <- 1/d.temp$Days.to.pupation
+#hist(d.temp$Days.to.pupation.inv)
+
+Zs.DtP <- data.frame(Species=factor(), Treatment=factor(), Zt=numeric(), Zt.SE=numeric())
+for(i in 1:length(levels(d.temp$Treatment))){
+  if(levels(d.temp$Treatment)[i] != "C"){
+    Tx <- levels(d.temp$Treatment)[i] 
+    d <- d.temp[which(d.temp$Treatment==Tx),]
+    d2 <- d.temp[which(d.temp$Treatment==Tx | d.temp$Treatment=="C"),]
+    
+    for(j in 1:length(levels(d.temp$Species))){
+      Sp <- levels(d.temp$Species)[j]
+      d3 <- d2[which(d2$Species==Sp),]
+      d3$Treatment <- factor(d3$Treatment, levels=c(Tx, "C"))
+      #switched order of Tx and C here so that the directionality of the effect will be the same
+      #across performance metrics. This will give the slope of the line from Tx to C
+      m.DtP <- lm(Days.to.pupation ~ Treatment, data=d3)
+      b <- coef(summary(m.DtP))[2,1]
+      b.SE <- coef(summary(m.DtP))[2,2]
+      newrow = data.frame(Species=Sp, Treatment=Tx, Zt=b, Zt.SE=b.SE)
+      Zs.DtP <- rbind(Zs.DtP, newrow)
+    }
+  }
+}
+
+#**Tried doing these analyses comparing data for each treatment only to the controls from the 
+#same experiment, but the models were getting "essentially perfect fit, may be unreliable" errors
+#because in several cases all the controls for an experiment (7-9 caterpillars) pupated on the same day
+#and so there was no variance. Thus, I compared to all the controls for that species for DtP, which
+#increased the C sample size and I think provides a more clear picture 
+
+
+
+##Now calculate Zadd and variance for each mixture
+#from Tallarida, the variance of Zadd is
+#var_Zadd= f^2 * V_A + (1-f)^2 * V_B
+#where f=the fraction of each compound in mix
+
+
+Zs.DtP$Zadd <- NA
+Zs.DtP$Zadd.SE <- NA
+
+Tx.Comp <- distinct(d.temp[,c(2, 12:25)], Treatment, .keep_all=TRUE)
+Tx.Comp$Treatment <- as.character(Tx.Comp$Treatment)
+
+for(i in 1:length(Zs.DtP$Zadd)){
+  Zs.DtP$Zadd[i] <- 0
+  Zs.DtP$Zadd.SE[i] <- 0
+  H <- Zs.DtP$Species[i]
+  Tx <- Zs.DtP$Treatment[i]
+  for(j in 2:15){
+    C.ID <- colnames(Tx.Comp)[j]
+    e <- Zs.DtP$Zt[which(Zs.DtP$Treatment==C.ID & Zs.DtP$Species==H)]  #effect of indiv compound
+    var <- Zs.DtP$Zt.SE[which(Zs.DtP$Treatment==C.ID & Zs.DtP$Species==H)]^2  ##var of slope from model coef (se^2)  see: https://stackoverflow.com/questions/14960868/how-do-i-print-the-variance-of-an-lm-in-r-without-computing-from-the-standard-er
+    a <- e*(Tx.Comp[which(Tx.Comp$Treatment==Tx),j]/0.5)  ##effect * relative abundance (note total compounds=0.5mg, so dividing by that)
+    #r <- d.temp$Richness[i]
+    b <- var*((Tx.Comp[which(Tx.Comp$Treatment==Tx),j]/0.5))  ##in Tallarida equation the proportions are squared, 
+    #but that gives really weird results with multiple compounds, where the variance estimate gets much lower as you increase in richness
+    ##here I just made the variance a straight additive proportional function of the composition
+    Zs.DtP$Zadd[i] <- Zs.DtP$Zadd[i] + a
+    Zs.DtP$Zadd.SE[i] <- Zs.DtP$Zadd.SE[i] + b  #this is a actually generating the variance
+  }
+  Zs.DtP$Zadd.SE [i] <- sqrt(Zs.DtP$Zadd.SE[i]) #square root to get SE
+}
+
+
+# Define Richness: 0,1,2,4,6,8,10
+Zs.DtP$Richness <- NA
+for (i in 1:nrow(Zs.DtP)){
+  Zs.DtP$Richness[i] <- str_extract(Zs.DtP$Treatment[i],'[0-9]+')}
+Zs.DtP$Richness[which(is.na(Zs.DtP$Richness))] <- 1
+Zs.DtP$Richness <- as.numeric(Zs.DtP$Richness)
+
+
+#Calculate CIs for Zt and Zadd
+#From Tallarida 2002, total sample size for calculating CI is based on total
+#number of datapoints in drug1, drug 2, and combination all combined
+#So in our case we have N=15 for each compound, plus ~N=5-8 for each mixture
+#so use t-value 1.960 (for large sample size, anything over df=120)
+#So 95% CI is Zadd +/- int
+
+Zs.DtP$Zt_upper <- Zs.DtP$Zt + (Zs.DtP$Zt.SE*1.96)
+Zs.DtP$Zt_lower <- Zs.DtP$Zt - (Zs.DtP$Zt.SE*1.96)
+Zs.DtP$Zadd_upper <- Zs.DtP$Zadd + (Zs.DtP$Zadd.SE*1.96)
+Zs.DtP$Zadd_lower <- Zs.DtP$Zadd - (Zs.DtP$Zadd.SE*1.96)
+
+
+
+
+#Plots
+
+#divide data
+z1 <- Zs.DtP[,c(1:4,7:9)]
+z2 <- Zs.DtP[,c(1:2, 5:7, 10:11)]
+z1$Tx <- "obs"
+z2$Tx <- "exp"
+colnames(z1) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
+colnames(z2) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
+
+z3 <- rbind(z1, z2)
+
+z4 <- z3[which(z3$Richness!=1),]
+z4 <- droplevels(z4)
+ggplot(z4[which(z4$Species=="Hz"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Sf"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Cp"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Px"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+
+#Some effects of Hz, Sf, and Px; in most cases values for observed are higher
+
+
+#or plot diff exp-obs
+
+#0= no non-additive effects
+#>0 indicates synergy
+#<0 indicates antagonism
+#positive effect of richness on Zdiff would indicate increasing synergy with more complex mixtures
+##non overlapping CI would indicate significant non-additive effects
+
+Zs.DtP$diff <- Zs.DtP$Zadd-Zs.DtP$Zt   
+plot(Zs.DtP$diff~ Zs.DtP$Richness)
+abline(lm(Zs.DtP$diff~ Zs.DtP$Richness))
+
+
+##Can test for increase in synergy with increasing richness
+
+m1.Hz <- summary(lm(diff~ Richness, data=Zs.DtP[which(Zs.DtP$Species=="Hz" & Zs.DtP$Richness !=1),]))  #no synergy
+m1.Sf <- summary(lm(diff~ Richness, data=Zs.DtP[which(Zs.DtP$Species=="Sf"& Zs.DtP$Richness !=1),]))  #no synergy
+m1.Px <- summary(lm(diff~ Richness, data=Zs.DtP[which(Zs.DtP$Species=="Px"& Zs.DtP$Richness !=1),]))  #no synergy
+m1.Cp <- summary(lm(diff~ Richness, data=Zs.DtP[which(Zs.DtP$Species=="Cp"& Zs.DtP$Richness !=1),]))  #no synergy
+m1.Hz
+m1.Sf
+m1.Px
+m1.Cp
+
+#Here we see a significant effect for Hz...
+
+
+
+#Add stats to summary table
+m.sum.RvsS <- rbind(m.sum.RvsS, 
+                    c("DtP", "Hz", m1.Hz$coefficients[2,1], m1.Hz$coefficients[2,3], m1.Hz$coefficients[2,4]))
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("DtP", "Sf", m1.Sf$coefficients[2,1], m1.Sf$coefficients[2,3], m1.Sf$coefficients[2,4]))
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("DtP", "Cp", m1.Cp$coefficients[2,1], m1.Cp$coefficients[2,3], m1.Cp$coefficients[2,4]))
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("DtP", "Px", m1.Px$coefficients[2,1], m1.Px$coefficients[2,3], m1.Px$coefficients[2,4]))
+
+
+
+#same for fungi
+
+d.temp <- d.fungi2
+d.temp$Treatment <- as.factor(d.temp$Treatment)
+
+Zs.F <- data.frame(Species=factor(), Treatment=factor(), Zt=numeric(), Zt.SE=numeric())
+for(i in 1:length(levels(d.temp$Treatment))){
+  if(levels(d.temp$Treatment)[i] != "DMSO"){
+    Tx <- levels(d.temp$Treatment)[i] 
+    d <- d.temp[which(d.temp$Treatment==Tx),]
+    #e <- as.character(unique(d$exp)) #**see note below
+    d2 <- d.temp[which(d.temp$Treatment==Tx | d.temp$Treatment=="DMSO"),]
+    #d2 <- filter(d2, exp %in% e)
+    
+    for(j in 1:length(levels(d.temp$Fungi))){
+      Sp <- levels(d.temp$Fungi)[j]
+      d3 <- d2[which(d2$Fungi==Sp),]
+      d3$Treatment <- factor(d3$Treatment, levels=c("DMSO", Tx))
+      m.F <- lm(slope ~ Treatment, data=d3)
+      b <- coef(summary(m.F))[2,1]
+      b.SE <- coef(summary(m.F))[2,2]
+      newrow = data.frame(Species=Sp, Treatment=Tx, Zt=b, Zt.SE=b.SE)
+      Zs.F <- rbind(Zs.F, newrow)
+    }
+  }
+}
+
+
+##Now calculate Zadd and variance for each mixture
+#from Tallarida, the variance of Zadd is
+#var_Zadd= f^2 * V_A + (1-f)^2 * V_B
+#where f=the fraction of each compound in mix
+
+
+Zs.F$Zadd <- NA
+Zs.F$Zadd.SE <- NA
+
+for(i in 1:length(Zs.F$Zadd)){
+  Zs.F$Zadd[i] <- 0
+  Zs.F$Zadd.SE[i] <- 0
+  H <- Zs.F$Species[i]
+  Tx <- Zs.F$Treatment[i]
+  for(j in 2:15){
+    C.ID <- colnames(Tx.Comp)[j]
+    e <- Zs.F$Zt[which(Zs.F$Treatment==C.ID & Zs.F$Species==H)]  #effect of indiv compound
+    var <- Zs.F$Zt.SE[which(Zs.F$Treatment==C.ID & Zs.F$Species==H)]^2  ##var of slope from model coef (se^2)  see: https://stackoverflow.com/questions/14960868/how-do-i-print-the-variance-of-an-lm-in-r-without-computing-from-the-standard-er
+    a <- e*(Tx.Comp[which(Tx.Comp$Treatment==Tx),j]/0.5)  ##effect * relative abundance (note total compounds=0.5mg, so dividing by that)
+    #r <- d.temp$Richness[i]
+    b <- var*((Tx.Comp[which(Tx.Comp$Treatment==Tx),j]/0.5))  ##in Tallarida equation the proportions are squared, 
+    #but that gives really weird results with multiple compounds, where the variance estimate gets much lower as you increase in richness
+    ##here I just made the variance a straight additive proportional function of the composition
+    Zs.F$Zadd[i] <- Zs.F$Zadd[i] + a
+    Zs.F$Zadd.SE[i] <- Zs.F$Zadd.SE[i] + b  #this is actually generating the variance
+  }
+  Zs.F$Zadd.SE [i] <- sqrt(Zs.F$Zadd.SE[i]) #square root to get SE
+}
+
+
+# Define Richness: 0,1,2,4,6,8,10
+Zs.F$Richness <- NA
+for (i in 1:nrow(Zs.F)){
+  Zs.F$Richness[i] <- str_extract(Zs.F$Treatment[i],'[0-9]+')}
+Zs.F$Richness[which(is.na(Zs.F$Richness))] <- 1
+Zs.F$Richness <- as.numeric(Zs.F$Richness)
+
+
+#Calculate CIs for Zt and Zadd
+#From Tallarida 2002, total sample size for calculating CI is based on total
+#number of datapoints in drug1, drug 2, and combination all combined
+#So in our case we have N=15 for each compound, plus ~N=5-8 for each mixture
+#so use t-value 1.960 (for large sample size, anything over df=120)
+#So 95% CI is Zadd +/- int
+
+Zs.F$Zt_upper <- Zs.F$Zt + (Zs.F$Zt.SE*1.96)
+Zs.F$Zt_lower <- Zs.F$Zt - (Zs.F$Zt.SE*1.96)
+Zs.F$Zadd_upper <- Zs.F$Zadd + (Zs.F$Zadd.SE*1.96)
+Zs.F$Zadd_lower <- Zs.F$Zadd - (Zs.F$Zadd.SE*1.96)
+
+
+
+
+#Plots
+
+#divide data
+z1 <- Zs.F[,c(1:4,7:9)]
+z2 <- Zs.F[,c(1:2, 5:7, 10:11)]
+z1$Tx <- "obs"
+z2$Tx <- "exp"
+colnames(z1) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
+colnames(z2) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
+
+z3 <- rbind(z1, z2)
+
+z4 <- z3[which(z3$Richness!=1),]
+z4 <- droplevels(z4)
+ggplot(z4[which(z4$Species=="Botrys"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Collet"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Penicillium"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+ggplot(z4[which(z4$Species=="Sclerotinia"),], aes(x=Treatment, y = Z, group = Tx)) +
+  geom_point( aes(color=Tx)) +
+  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
+
+#Zs indicate the effect of treatment relative to control. Negative numbers indicate herbivores 
+#did worse on treatment. 
+#If observed slope is more negative than the expected additive slope, then we have synergy
+
+
+#or plot diff exp-obs
+
+#0= no non-additive effects
+#>0 indicates synergy
+#<0 indicates antagonism
+#positive effect of richness on Zdiff would indicate increasing synergy with more complex mixtures
+##non overlapping CI would indicate significant non-additive effects
+
+Zs.F$diff <- Zs.F$Zadd-Zs.F$Zt   
+plot(Zs.F$diff~ Zs.F$Richness)
+abline(lm(Zs.F$diff~ Zs.F$Richness))
+
+
+##Can test for increase in synergy with increasing richness
+
+m1.Bo <- summary(lm(diff~ Richness, data=Zs.F[which(Zs.F$Species=="Botrys" & Zs.F$Richness !=1),]))  #no synergy
+m1.Co <- summary(lm(diff~ Richness, data=Zs.F[which(Zs.F$Species=="Collet"& Zs.F$Richness !=1),]))  #no synergy
+m1.Pe <- summary(lm(diff~ Richness, data=Zs.F[which(Zs.F$Species=="Penicillium"& Zs.F$Richness !=1),]))  #no synergy
+m1.Sc <- summary(lm(diff~ Richness, data=Zs.F[which(Zs.F$Species=="Sclerotinia"& Zs.F$Richness !=1),]))  #no synergy
+m1.Bo
+m1.Co
+m1.Pe
+m1.Sc
+
+#Add stats to summary table
+m.sum.RvsS <- rbind(m.sum.RvsS, 
+                    c("F", "Botrys", m1.Hz$coefficients[2,1], m1.Hz$coefficients[2,3], m1.Hz$coefficients[2,4]))
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("F", "Collet", m1.Sf$coefficients[2,1], m1.Sf$coefficients[2,3], m1.Sf$coefficients[2,4]))
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("F", "Penicillium", m1.Cp$coefficients[2,1], m1.Cp$coefficients[2,3], m1.Cp$coefficients[2,4]))
+m.sum.RvsS <- rbind(m.sum.RvsS,
+                    c("F", "Sclerotinia", m1.Px$coefficients[2,1], m1.Px$coefficients[2,3], m1.Px$coefficients[2,4]))
+
+#Add column to Z tables showing whether or not the CIs overlapped
+Zs.PW$CI.overlap <- as.factor(ifelse(Zs.PW$Zt_lower>Zs.PW$Zadd_upper | Zs.PW$Zadd_lower>Zs.PW$Zt_upper,1,0 ))
+Zs.DtP$CI.overlap <- as.factor(ifelse(Zs.DtP$Zt_lower>Zs.DtP$Zadd_upper | Zs.DtP$Zadd_lower>Zs.DtP$Zt_upper,1,0 ))
+Zs.F$CI.overlap <- as.factor(ifelse(Zs.F$Zt_lower>Zs.F$Zadd_upper | Zs.F$Zadd_lower>Zs.F$Zt_upper,1,0 ))
+
+#How many synergies?
+Zs.PW$syn <- ifelse(Zs.PW$Zadd_lower>Zs.PW$Zt_upper,1,0)
+Zs.DtP$syn <- ifelse(Zs.DtP$Zadd_lower>Zs.DtP$Zt_upper,1,0)
+Zs.F$syn <- ifelse(Zs.F$Zadd_lower>Zs.F$Zt_upper,1,0)
+Zs.PW$ant <- ifelse(Zs.PW$Zt_lower>Zs.PW$Zadd_upper,1,0)
+Zs.DtP$ant <- ifelse(Zs.DtP$Zt_lower>Zs.DtP$Zadd_upper,1,0)
+Zs.F$ant <- ifelse(Zs.F$Zt_lower>Zs.F$Zadd_upper,1,0)
+
+sum(Zs.PW$syn)
+sum(Zs.DtP$syn)
+sum(Zs.F$syn)
+sum(Zs.PW$ant)
+sum(Zs.DtP$ant)
+sum(Zs.F$ant)
+#these numbers are mentioned in the discussion
 
 
 #***************************************************************************************
@@ -2137,7 +2646,7 @@ for(i in 1:length(d.sum.F$TxLessRes.F)){
 }  
 
 
-#total numbers of effects for papers
+#total numbers of effects for paper
 sum(d.sum$HerbAffected)
 sum(d.sum$HerbPosAffected)
 length(d.sum$HerbAffected)
@@ -2154,6 +2663,9 @@ length(d.sum.F$TxMoreRes.F)
 #Save these tables for figs
 
 save.image("./Outputs/Workspaces/FinalAnalyses_Pred2d&3a_IndivComps")
+
+
+
 
 
 
@@ -3023,5 +3535,134 @@ d.sum2.means2
 NumEffects.even <- d.sum2 
 save.image("./Outputs/Workspaces/FinalAnalyses_Evenness_NumEffects")
 
+
+
+
+#--------------------------------------------------------------
+#Supplemental: Molecular weight and bioactivity
+#----------------------------------------
+
+##in response to reviews and thinking about whether we can compare 
+#compound bioactivities because they were present in different molar concentrations
+#we are curious whether larger, more complex compounds might have
+#broader overall potential for bioactivity
+#Checking whether total number of effects depends on size
+#for the individual compounds
+
+load("./Outputs/Workspaces/FinalAnalyses_Pred2a-2b_NumEffects")
+MW <- read.csv("Whitehead_et_al_CIDs.csv")
+
+#checking relationship between MW and total number of effects
+d.temp <- d.sum2[which(d.sum2$Richness==1),]
+colnames(MW)[3] <- "Treatment"
+d.temp <- left_join(d.temp, MW, by="Treatment")
+
+plot(TotEffects ~ MW, data=d.temp)
+summary(lm(TotEffects ~ MW, data=d.temp))
+
+#can also look at relationship for particular performance metrics
+
+#Sf_PW
+d.temp <- d.sum[which(d.sum$Richness==1 & d.sum$Species=="Sf"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(PW.avg ~ MW, data=d.temp)
+summary(lm(PW.avg ~ MW, data=d.temp))
+
+#Hz_PW
+d.temp <- d.sum[which(d.sum$Richness==1 & d.sum$Species=="Hz"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(PW.avg ~ MW, data=d.temp)
+summary(lm(PW.avg ~ MW, data=d.temp))
+
+#Cp_PW
+d.temp <- d.sum[which(d.sum$Richness==1 & d.sum$Species=="Cp"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(PW.avg ~ MW, data=d.temp)
+summary(lm(PW.avg ~ MW, data=d.temp))
+
+#Px_PW
+d.temp <- d.sum[which(d.sum$Richness==1 & d.sum$Species=="Px"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(PW.avg ~ MW, data=d.temp)
+summary(lm(PW.avg ~ MW, data=d.temp))
+
+
+#Sf_DtP
+d.temp <- d.sum[which(d.sum$Richness==1 & d.sum$Species=="Sf"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(DtP.avg ~ MW, data=d.temp)
+summary(lm(DtP.avg ~ MW, data=d.temp))
+
+#Hz_DtP
+d.temp <- d.sum[which(d.sum$Richness==1 & d.sum$Species=="Hz"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(DtP.avg ~ MW, data=d.temp)
+summary(lm(DtP.avg ~ MW, data=d.temp))
+
+#Cp_DtP
+d.temp <- d.sum[which(d.sum$Richness==1 & d.sum$Species=="Cp"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(DtP.avg ~ MW, data=d.temp)
+summary(lm(DtP.avg ~ MW, data=d.temp))
+
+#Px_DtP
+d.temp <- d.sum[which(d.sum$Richness==1 & d.sum$Species=="Px"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(DtP.avg ~ MW, data=d.temp)
+summary(lm(DtP.avg ~ MW, data=d.temp))
+
+
+
+#Sf_S
+d.temp <- d.rich.PS[which(d.rich.PS$Richness==1 & d.rich.PS$Species=="Sf"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(PropSurv.ST ~ MW, data=d.temp)
+summary(lm(PropSurv.ST ~ MW, data=d.temp))
+#here is one where there is a negative relationships...survival lower
+#on larger compounds, even though larger compounds have
+#fewer moles
+
+#Hz_S
+d.temp <- d.rich.PS[which(d.rich.PS$Richness==1 & d.rich.PS$Species=="Hz"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(PropSurv.ST ~ MW, data=d.temp)
+summary(lm(PropSurv.ST ~ MW, data=d.temp))
+
+#Cp_S
+d.temp <- d.rich.PS[which(d.rich.PS$Richness==1 & d.rich.PS$Species=="Cp"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(PropSurv.ST ~ MW, data=d.temp)
+summary(lm(PropSurv.ST ~ MW, data=d.temp))
+
+#Px_S
+d.temp <- d.rich.PS[which(d.rich.PS$Richness==1 & d.rich.PS$Species=="Px"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(PropSurv.ST ~ MW, data=d.temp)
+summary(lm(PropSurv.ST ~ MW, data=d.temp))
+
+
+#Botrys
+d.temp <- d.sum.f[which(d.sum.f$Richness==1 & d.sum.f$Species=="Botrys"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(dAbs.avg ~ MW, data=d.temp)
+summary(lm(dAbs.avg ~ MW, data=d.temp))
+
+#Collet
+d.temp <- d.sum.f[which(d.sum.f$Richness==1 & d.sum.f$Species=="Collet"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(dAbs.avg ~ MW, data=d.temp)
+summary(lm(dAbs.avg ~ MW, data=d.temp))
+
+#Penicillium
+d.temp <- d.sum.f[which(d.sum.f$Richness==1 & d.sum.f$Species=="Penicillium"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(dAbs.avg ~ MW, data=d.temp)
+summary(lm(dAbs.avg ~ MW, data=d.temp))
+
+#Sclerotinia
+d.temp <- d.sum.f[which(d.sum.f$Richness==1 & d.sum.f$Species=="Sclerotinia"),]
+d.temp <- left_join(d.temp, MW, by="Treatment")
+plot(dAbs.avg ~ MW, data=d.temp)
+summary(lm(dAbs.avg ~ MW, data=d.temp))
 
 
