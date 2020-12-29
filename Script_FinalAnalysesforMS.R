@@ -15,9 +15,7 @@ library(sjstats) #for ICC (intraclass correlation coefficient) calcs
 #sections of code can be run independently
 
 
-#------------------------------------------------------------------------
-#Data standardization and calculations
-#-----------------------------
+# Data standardization and calculations-----
 
 #load data
 d.rich <- read.csv("Whitehead_et_al_Insects.csv")  
@@ -250,13 +248,13 @@ counts2 <- pivot_wider(counts, names_from = Fungi, values_from = n)
 
 save.image("./Outputs/Workspaces/StandardizedData")
 
+#**************************************************************
 
 
 
 
-#---------------------------------------------------------------------
-#Effects of richness and SD on performance (Predictions 1a, 1b, 1c)
-#-----------------------------
+# Effects of richness and SD on performance (Predictions 1a, 1b, 1c)-----
+
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -799,9 +797,12 @@ write.csv(m.sum, "./Outputs/Tables/TableS5_Pred1a-1c_EffectsBySpecies.csv")
 save.image("./Outputs/Workspaces/FinalAnalyses_Pred1a-1c")
 
 
-#-------------------------------------------------------------------------
-# Testing whether synergy increases with richness (Prediction 1d)
-#-----------------------------
+#**************************************************************
+
+
+
+
+# Testing whether synergy increases with richness (Prediction 1d)----
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -1312,26 +1313,39 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Pred1d_synergy")
 #export data for table 2
 write.csv(m.sum.RvsS, "./Outputs/Tables/TableS6_Pred1d_synergy.csv")
 
-#----------------------null models------
+# ---Prediction 1d null models------
 
 #During the review process, there was some concern that these models
 #rely on using the output from one analysis to inform the next, and that
-#it is not clear how error and variance propogate through the models. 
+#it is not clear how error and variance propagate through the models. 
 #It was suggested that we create a set of null models that use a 
 #randomized dataset to compare the output to those models 
 
-#This section is a full repeat of the analysis above for Prediction 1d, but
-#with each of the response variables in the dataset completely randomized
+#This section repeats the analysis above for Prediction 1d 100 times with 
+#different randomizations of the dataset. Each run is a new randomization
+#of the three response variables in the dataset used in the analysis: pupal weight
+#days to pupation, and fungal growth
 
-#make table to store stats for richness vs synergy tests
+#Data randomization is by species,so values are randomized for all individuals of
+#a species across all treatments, including controls 
+
+
+#make table to store stats across all iterations
+m.sum.RvsS.null <- data.frame(Metric=NA, Sp=NA, Slope=NA, Z=NA, P=NA, Run=NA)
+
+for(k in 1:100){
+
+#table to store stats for models testing effects of richness on interaction index    
 m.sum.RvsS <- data.frame(Metric=NA, Sp=NA, Slope=NA, Z=NA, P=NA)
 
 #for pupal weight
 
 d.temp <- d.rich
 
-#RANDOMIZING PUPAL WEIGHT
-d.temp$Pupal.weight <- sample(d.temp$Pupal.weight)
+#randomizing data
+d.temp <- d.temp %>% 
+  group_by(Species) %>% 
+  mutate(Pupal.weight = Pupal.weight[sample(row_number())]) 
 
 Zs.PW <- data.frame(Species=factor(), Treatment=factor(), Zt=numeric(), Zt.SE=numeric())
 for(i in 1:length(levels(d.temp$Treatment))){
@@ -1356,7 +1370,7 @@ for(i in 1:length(levels(d.temp$Treatment))){
 }
 
 
-##Now alculate Zadd and variance for each mixture
+##Now calculate Zadd and variance for each mixture
 #from Tallarida, the variance of Zadd is
 #var_Zadd= f^2 * V_A + (1-f)^2 * V_B
 #where f=the fraction of each compound in mix
@@ -1388,7 +1402,9 @@ for(i in 1:length(Zs.PW$Zadd)){
     Zs.PW$Zadd[i] <- Zs.PW$Zadd[i] + a
     Zs.PW$Zadd.SE[i] <- Zs.PW$Zadd.SE[i] + b  #this is a actually generating the variance
   }
-  Zs.PW$Zadd.SE [i] <- sqrt(Zs.PW$Zadd.SE[i]) #square root to get SE
+    Zs.PW$Zadd <- as.numeric(Zs.PW$Zadd)  
+    Zs.PW$Zadd.SE <- as.numeric(Zs.PW$Zadd.SE) 
+    Zs.PW$Zadd.SE [i] <- sqrt(Zs.PW$Zadd.SE[i]) #square root to get SE
 }
 
 
@@ -1414,46 +1430,8 @@ Zs.PW$Zadd_lower <- Zs.PW$Zadd - (Zs.PW$Zadd.SE*1.96)
 
 
 
-#Plots
-
-#divide data
-z1 <- Zs.PW[,c(1:4,7:9)]
-z2 <- Zs.PW[,c(1:2, 5:7, 10:11)]
-z1$Tx <- "obs"
-z2$Tx <- "exp"
-colnames(z1) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
-colnames(z2) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
-
-z3 <- rbind(z1, z2)
-
-z4 <- z3[which(z3$Richness!=1),]
-z4 <- droplevels(z4)
-ggplot(z4[which(z4$Species=="Hz"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Sf"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Cp"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Px"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-
-#Note confidence intervals overlap for every single one!!
-
-
-#or plot diff exp-obs
-#0= no non-additive effects
-#>0 indicates synergy
-#<0 indicates antagonism
-#positive effect of richness on Zdiff would indicate increasing synergy with more complex mixtures
-##non overlapping CI would indicate significant non-additive effects
-
 Zs.PW$diff <- Zs.PW$Zadd-Zs.PW$Zt   
-plot(Zs.PW$diff~ Zs.PW$Richness)
-abline(lm(Zs.PW$diff~ Zs.PW$Richness))
+
 
 
 ##Can test for increase in synergy with increasing richness
@@ -1467,13 +1445,7 @@ m1.Sf
 m1.Cp
 m1.Px
 
-##Note, in the main results, there there was a marginal effect for Px where
-#Zdiff increased with richness
-#Here there is a marginal effect for Hz
 
-#marginally significant effect for Hz; checking plot
-plot(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Hz" & Zs.PW$Richness !=1),])
-abline(lm(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Hz" & Zs.PW$Richness !=1),]))
 
 
 #Add stats to summary table
@@ -1492,7 +1464,12 @@ m.sum.RvsS <- rbind(m.sum.RvsS,
 ####Now the same for DtP
 
 d.temp <- d.rich
-d.temp$Days.to.pupation <- sample(d.temp$Days.to.pupation)
+
+#randomizing data
+d.temp <- d.temp %>% 
+  group_by(Species) %>% 
+  mutate(Days.to.pupation = Days.to.pupation[sample(row_number())]) 
+
 
 #taking the inverse of days to pupation--i.e. "development speed" so that the 
 #directionality of effects is the same for all performance metrics
@@ -1558,6 +1535,8 @@ for(i in 1:length(Zs.DtP$Zadd)){
     Zs.DtP$Zadd[i] <- Zs.DtP$Zadd[i] + a
     Zs.DtP$Zadd.SE[i] <- Zs.DtP$Zadd.SE[i] + b  #this is a actually generating the variance
   }
+  Zs.DtP$Zadd <- as.numeric(Zs.DtP$Zadd)
+  Zs.DtP$Zadd.SE <- as.numeric(Zs.DtP$Zadd.SE)
   Zs.DtP$Zadd.SE [i] <- sqrt(Zs.DtP$Zadd.SE[i]) #square root to get SE
 }
 
@@ -1583,49 +1562,7 @@ Zs.DtP$Zadd_upper <- Zs.DtP$Zadd + (Zs.DtP$Zadd.SE*1.96)
 Zs.DtP$Zadd_lower <- Zs.DtP$Zadd - (Zs.DtP$Zadd.SE*1.96)
 
 
-
-
-#Plots
-
-#divide data
-z1 <- Zs.DtP[,c(1:4,7:9)]
-z2 <- Zs.DtP[,c(1:2, 5:7, 10:11)]
-z1$Tx <- "obs"
-z2$Tx <- "exp"
-colnames(z1) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
-colnames(z2) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
-
-z3 <- rbind(z1, z2)
-
-z4 <- z3[which(z3$Richness!=1),]
-z4 <- droplevels(z4)
-ggplot(z4[which(z4$Species=="Hz"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Sf"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Cp"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Px"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-
-#Some effects of Hz, Sf, and Px; in most cases values for observed are higher
-
-
-#or plot diff exp-obs
-
-#0= no non-additive effects
-#>0 indicates synergy
-#<0 indicates antagonism
-#positive effect of richness on Zdiff would indicate increasing synergy with more complex mixtures
-##non overlapping CI would indicate significant non-additive effects
-
 Zs.DtP$diff <- Zs.DtP$Zadd-Zs.DtP$Zt   
-plot(Zs.DtP$diff~ Zs.DtP$Richness)
-abline(lm(Zs.DtP$diff~ Zs.DtP$Richness))
 
 
 ##Can test for increase in synergy with increasing richness
@@ -1639,9 +1576,6 @@ m1.Sf
 m1.Px
 m1.Cp
 
-#Here we see a significant effect for Hz...
-
-
 
 #Add stats to summary table
 m.sum.RvsS <- rbind(m.sum.RvsS, 
@@ -1654,11 +1588,16 @@ m.sum.RvsS <- rbind(m.sum.RvsS,
                     c("DtP", "Px", m1.Px$coefficients[2,1], m1.Px$coefficients[2,3], m1.Px$coefficients[2,4]))
 
 
-
 #same for fungi
 
 d.temp <- d.fungi2
 d.temp$Treatment <- as.factor(d.temp$Treatment)
+
+#randomizing data
+d.temp <- d.temp %>% 
+  group_by(Fungi) %>% 
+  mutate(slope = slope[sample(row_number())]) 
+
 
 Zs.F <- data.frame(Species=factor(), Treatment=factor(), Zt=numeric(), Zt.SE=numeric())
 for(i in 1:length(levels(d.temp$Treatment))){
@@ -1709,6 +1648,8 @@ for(i in 1:length(Zs.F$Zadd)){
     Zs.F$Zadd[i] <- Zs.F$Zadd[i] + a
     Zs.F$Zadd.SE[i] <- Zs.F$Zadd.SE[i] + b  #this is actually generating the variance
   }
+  Zs.F$Zadd <- as.numeric(Zs.F$Zadd)
+  Zs.F$Zadd.SE <- as.numeric(Zs.F$Zadd.SE)
   Zs.F$Zadd.SE [i] <- sqrt(Zs.F$Zadd.SE[i]) #square root to get SE
 }
 
@@ -1734,51 +1675,7 @@ Zs.F$Zadd_upper <- Zs.F$Zadd + (Zs.F$Zadd.SE*1.96)
 Zs.F$Zadd_lower <- Zs.F$Zadd - (Zs.F$Zadd.SE*1.96)
 
 
-
-
-#Plots
-
-#divide data
-z1 <- Zs.F[,c(1:4,7:9)]
-z2 <- Zs.F[,c(1:2, 5:7, 10:11)]
-z1$Tx <- "obs"
-z2$Tx <- "exp"
-colnames(z1) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
-colnames(z2) <- c("Species", "Treatment", "Z", "SE", "Richness", "upper",  "lower", "Tx")
-
-z3 <- rbind(z1, z2)
-
-z4 <- z3[which(z3$Richness!=1),]
-z4 <- droplevels(z4)
-ggplot(z4[which(z4$Species=="Botrys"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Collet"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Penicillium"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-ggplot(z4[which(z4$Species=="Sclerotinia"),], aes(x=Treatment, y = Z, group = Tx)) +
-  geom_point( aes(color=Tx)) +
-  geom_errorbar(aes(ymin=lower, ymax=upper, color=Tx), width=.5)
-
-#Zs indicate the effect of treatment relative to control. Negative numbers indicate herbivores 
-#did worse on treatment. 
-#If observed slope is more negative than the expected additive slope, then we have synergy
-
-
-#or plot diff exp-obs
-
-#0= no non-additive effects
-#>0 indicates synergy
-#<0 indicates antagonism
-#positive effect of richness on Zdiff would indicate increasing synergy with more complex mixtures
-##non overlapping CI would indicate significant non-additive effects
-
 Zs.F$diff <- Zs.F$Zadd-Zs.F$Zt   
-plot(Zs.F$diff~ Zs.F$Richness)
-abline(lm(Zs.F$diff~ Zs.F$Richness))
 
 
 ##Can test for increase in synergy with increasing richness
@@ -1802,32 +1699,52 @@ m.sum.RvsS <- rbind(m.sum.RvsS,
 m.sum.RvsS <- rbind(m.sum.RvsS,
                     c("F", "Sclerotinia", m1.Px$coefficients[2,1], m1.Px$coefficients[2,3], m1.Px$coefficients[2,4]))
 
-#Add column to Z tables showing whether or not the CIs overlapped
-Zs.PW$CI.overlap <- as.factor(ifelse(Zs.PW$Zt_lower>Zs.PW$Zadd_upper | Zs.PW$Zadd_lower>Zs.PW$Zt_upper,1,0 ))
-Zs.DtP$CI.overlap <- as.factor(ifelse(Zs.DtP$Zt_lower>Zs.DtP$Zadd_upper | Zs.DtP$Zadd_lower>Zs.DtP$Zt_upper,1,0 ))
-Zs.F$CI.overlap <- as.factor(ifelse(Zs.F$Zt_lower>Zs.F$Zadd_upper | Zs.F$Zadd_lower>Zs.F$Zt_upper,1,0 ))
 
-#How many synergies?
-Zs.PW$syn <- ifelse(Zs.PW$Zadd_lower>Zs.PW$Zt_upper,1,0)
-Zs.DtP$syn <- ifelse(Zs.DtP$Zadd_lower>Zs.DtP$Zt_upper,1,0)
-Zs.F$syn <- ifelse(Zs.F$Zadd_lower>Zs.F$Zt_upper,1,0)
-Zs.PW$ant <- ifelse(Zs.PW$Zt_lower>Zs.PW$Zadd_upper,1,0)
-Zs.DtP$ant <- ifelse(Zs.DtP$Zt_lower>Zs.DtP$Zadd_upper,1,0)
-Zs.F$ant <- ifelse(Zs.F$Zt_lower>Zs.F$Zadd_upper,1,0)
+m.sum.RvsS$Run <- k
+m.sum.RvsS.null <- rbind(m.sum.RvsS.null, m.sum.RvsS)
 
-sum(Zs.PW$syn)
-sum(Zs.DtP$syn)
-sum(Zs.F$syn)
-sum(Zs.PW$ant)
-sum(Zs.DtP$ant)
-sum(Zs.F$ant)
-#these numbers are mentioned in the discussion
+}
+
+m.sum.RvsS.null$P <- as.numeric(m.sum.RvsS.null$P)
+
+hist(m.sum.RvsS.null$P)
+
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05)])
+
+##the p-value was < 0.05 in 53 of 1200 tests (=0.044 proportionally) 
+#this suggests the multi-step analysis approach is not biasing the 
+#results toward rejecting/supporting hypotheses
 
 
-#***************************************************************************************
-#-------------------------------------------------------------------------
-# Comparing mixtures to single most effective compound (Prediction 1e)
-#-----------------------------
+#check to see if these are equally distributed across species, we would expect
+#that we should have ~10 for each insect and ~5 for each fungi, 
+#assuming we had 60 total false positives out of 1200 (alpha=0.05)
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Hz")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Sf")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Px")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Cp")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Hz")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Botrys")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Collet")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Penicillium")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Sclerotinia")])
+#these are variable, but I ran this several times and there is no consistent
+#pattern across species
+
+
+#and there should be ~20 per response variable
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Metric=="PW")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Metric=="DtP")])
+length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Metric=="F")])
+
+#********************************************************************
+
+
+
+
+
+# Comparing mixtures to average effectiveness of singletons (Prediction 1e)----
+
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -1873,8 +1790,8 @@ for(i in 1:length(means.PW$Species)){
   if(means.PW$Richness[i] > 1){
     t <- means.PW$Treatment[i]
     mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
-    singleton.min <- min(means.PW$avg[which(means.PW$Species==sp & means.PW$Treatment %in% mix)])
-    means.PW$exceeds[i] <- ifelse(means.PW$avg[i] < singleton.min, 1, 0)
+    singleton.mean <- mean(means.PW$avg[which(means.PW$Species==sp & means.PW$Treatment %in% mix)])
+    means.PW$exceeds[i] <- ifelse(means.PW$avg[i] < singleton.mean, 1, 0)
   } else {
     means.PW$exceeds[i] <- NA
   }
@@ -1980,8 +1897,8 @@ for(i in 1:length(means.DtP$Species)){
   if(means.DtP$Richness[i] > 1){
     t <- means.DtP$Treatment[i]
     mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
-    singleton.min <- min(means.DtP$avg[which(means.DtP$Species==sp & means.DtP$Treatment %in% mix)])
-    means.DtP$exceeds[i] <- ifelse(means.DtP$avg[i] < singleton.min, 1, 0)
+    singleton.mean <- mean(means.DtP$avg[which(means.DtP$Species==sp & means.DtP$Treatment %in% mix)])
+    means.DtP$exceeds[i] <- ifelse(means.DtP$avg[i] < singleton.mean, 1, 0)
   } else {
     means.DtP$exceeds[i] <- NA
   }
@@ -2002,7 +1919,6 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
   xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
 
-#marginal NEGATIVE effect of richness on probability (opposite of Pred 1e)
 
 #For Sf
 d.temp <- means.DtP[which(means.DtP$Species=="Sf" & means.DtP$Richness>1),]
@@ -2027,10 +1943,6 @@ ggplot(d.temp, aes(Richness, exceeds)) +
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
   xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
-
-#Significant negative effect, which is the opposite of prediction 1e
-#If synergy increased with richness, we should see an increasing probability of the treatment
-#exceeding the effectiveness of the control
 
 
 #for Cp
@@ -2091,8 +2003,8 @@ for(i in 1:length(S$Species)){
   if(S$Richness[i] > 1){
     t <- S$Treatment[i]
     mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
-    singleton.min <- min(S$PropSurv.ST[which(S$Species==sp & S$Treatment %in% mix)])
-    S$exceeds[i] <- ifelse(S$PropSurv.ST[i] < singleton.min, 1, 0)
+    singleton.mean <- mean(S$PropSurv.ST[which(S$Species==sp & S$Treatment %in% mix)])
+    S$exceeds[i] <- ifelse(S$PropSurv.ST[i] < singleton.mean, 1, 0)
   } else {
     S$exceeds[i] <- NA
   }
@@ -2206,8 +2118,8 @@ for(i in 1:length(means.F$Fungi)){
   if(means.F$Richness[i] > 1){
     t <- means.F$Treatment[i]
     mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
-    singleton.min <- min(means.F$avg[which(means.F$Fungi==sp & means.F$Treatment %in% mix)])
-    means.F$exceeds[i] <- ifelse(means.F$avg[i] < singleton.min, 1, 0)
+    singleton.mean <- mean(means.F$avg[which(means.F$Fungi==sp & means.F$Treatment %in% mix)])
+    means.F$exceeds[i] <- ifelse(means.F$avg[i] < singleton.mean, 1, 0)
   } else {
     means.F$exceeds[i] <- NA
   }
@@ -2285,11 +2197,342 @@ write.csv(m.sum.SvsM, "./Outputs/Tables/TableS7_Pred1e_singletonsVSmix.csv")
 #note for this save I just ran the data cleaning and standardization section and the singleton vs mixture section
 save.image("./Outputs/Workspaces/FinalAnalyses_Pred1e_singletonsVSmix")
 
+#**************************************************************
 
 
-#-------------------------------------------------------------------------
-# Effects of Richness and SD on Number of Effects (Prediction 2a and 2b)
-#-----------------------------
+# ----Prediction 1e null models-------------------
+
+#During the review process, there was some concern that these models
+#rely on using the output from one analysis to inform the next, and that
+#it is not clear how error and variance propagate through the models. 
+#It was suggested that we create a set of null models that use a 
+#randomized dataset to compare the output to those models 
+
+#This section repeats the analysis above for Prediction 1e 100 times with 
+#different randomizations of the dataset. 
+
+
+#make table to store stats across all iterations
+m.sum.SvsM.null <- data.frame(Metric=NA, Sp=NA, Slope=NA, Z=NA, P=NA, Run=NA)
+
+for(k in 1:100){
+
+  ##Using data from the richness experiment. 
+  
+  #make table to store stats for singleton vs mixtures
+  m.sum.SvsM <- data.frame(Metric=NA, Sp=NA, Slope=NA, Z=NA, P=NA)
+  
+  #----------------For Pupal weights
+  
+  #Getting means for each treatment
+  
+  d.temp <- d.rich
+  
+  #randomize data
+  d.temp <- d.temp %>% 
+    group_by(Species) %>% 
+    mutate(Pupal.weight.ST = Pupal.weight.ST[sample(row_number())]) 
+  
+  means.PW <- d.temp %>%
+    group_by(Species, Treatment, Richness) %>%
+    summarise(avg=mean(Pupal.weight.ST, na.rm=TRUE))
+  
+  #Need to create a 0/1 variable that indicates whether the mixture is more effective than the most
+  #effective singleton in that mixture.
+  means.PW$exceeds <- NA
+  
+  for(i in 1:length(means.PW$Species)){
+    sp <- means.PW$Species[i]
+    if(means.PW$Richness[i] > 1){
+      t <- means.PW$Treatment[i]
+      #mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
+      #singleton.mean <- mean(means.PW$avg[which(means.PW$Species==sp & means.PW$Treatment %in% mix)])
+      singleton.mean <- min(means.PW$avg[which(means.PW$Species==sp & means.PW$Richness==1)])
+      means.PW$exceeds[i] <- ifelse(means.PW$avg[i] < singleton.mean, 1, 0)
+    } else {
+      means.PW$exceeds[i] <- NA
+    }
+  }
+  
+  
+  ##Can now do a binomial glm to ask whether the likelihood of a treatment being more effective
+  #than the most effective single compound increases with increasing richness
+  
+  #  For Hz
+  d.temp <- means.PW[which(means.PW$Species=="Hz" & means.PW$Richness >1),]
+  m1.Hz <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+
+  #For Sf
+  d.temp <- means.PW[which(means.PW$Species=="Sf" & means.PW$Richness>1),]
+  m1.Sf <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+  
+  #For Px
+  d.temp <- means.PW[which(means.PW$Species=="Px" & means.PW$Richness >1),]
+  m1.Px <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+ 
+  #for Cp
+  d.temp <- means.PW[which(means.PW$Species=="Cp" & means.PW$Richness >1),]
+  m1.Cp <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+
+  
+  #Add stats to summary table
+  m.sum.SvsM[1,] <- c("PW", "Hz", m1.Hz$coefficients[2,1], m1.Hz$coefficients[2,3], m1.Hz$coefficients[2,4])
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("PW", "Sf", m1.Sf$coefficients[2,1], m1.Sf$coefficients[2,3], m1.Sf$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("PW", "Cp", m1.Cp$coefficients[2,1], m1.Cp$coefficients[2,3], m1.Cp$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("PW", "Px", m1.Px$coefficients[2,1], m1.Px$coefficients[2,3], m1.Px$coefficients[2,4]))
+  
+  
+  
+  #----------------For Days to Pupation
+  
+  #Getting means for each treatment
+  
+  d.temp <- d.rich
+  
+  #randomize data
+  d.temp <- d.temp %>% 
+    group_by(Species) %>% 
+    mutate(Days.to.pupation.ST.inv = Days.to.pupation.ST.inv[sample(row_number())]) 
+  
+  means.DtP <- d.temp %>%
+    group_by(Species, Treatment, Richness) %>%
+    summarise(avg=mean(Days.to.pupation.ST.inv, na.rm=TRUE))
+
+  #Need to create a 0/1 variable that indicates whether the mixture is more effective than the most
+  #effective singleton in that mixture.
+  means.DtP$exceeds <- NA
+  
+  for(i in 1:length(means.DtP$Species)){
+    sp <- means.DtP$Species[i]
+    if(means.DtP$Richness[i] > 1){
+      t <- means.DtP$Treatment[i]
+      #mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
+      #singleton.mean <- mean(means.DtP$avg[which(means.DtP$Species==sp & means.DtP$Treatment %in% mix)])
+      singleton.mean <- min(means.DtP$avg[which(means.DtP$Species==sp & means.DtP$Richness==1)])
+      means.DtP$exceeds[i] <- ifelse(means.DtP$avg[i] < singleton.mean, 1, 0)
+    } else {
+      means.DtP$exceeds[i] <- NA
+    }
+  }
+  
+  
+  ##Can now do a binomial glm to ask whether the likelihood of a treatment being more effective
+  #than the most effective single compound increases with increasing richness
+  
+  #  For Hz
+  d.temp <- means.DtP[which(means.DtP$Species=="Hz" & means.DtP$Richness >1),]
+  m1.Hz <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+ 
+  #For Sf
+  d.temp <- means.DtP[which(means.DtP$Species=="Sf" & means.DtP$Richness>1),]
+  m1.Sf <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+  
+  #For Px
+  d.temp <- means.DtP[which(means.DtP$Species=="Px" & means.DtP$Richness >1),]
+  m1.Px <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+  
+  #for Cp
+  d.temp <- means.DtP[which(means.DtP$Species=="Cp" & means.DtP$Richness >1),]
+  m1.Cp <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+  
+  #Add stats to summary table
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("DtP", "Hz", m1.Hz$coefficients[2,1], m1.Hz$coefficients[2,3], m1.Hz$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("DtP", "Sf", m1.Sf$coefficients[2,1], m1.Sf$coefficients[2,3], m1.Sf$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("DtP", "Cp", m1.Cp$coefficients[2,1], m1.Cp$coefficients[2,3], m1.Cp$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("DtP", "Px", m1.Px$coefficients[2,1], m1.Px$coefficients[2,3], m1.Px$coefficients[2,4]))
+  
+  
+  
+  #----------------For Survival
+  
+  
+  #Getting means for each treatment
+  
+  d.temp <- d.rich.PS
+  
+  #randomize data
+  d.temp <- d.temp %>% 
+    group_by(Species) %>% 
+    mutate(PropSurv.ST = PropSurv.ST[sample(row_number())]) 
+  
+  
+  #Need to create a 0/1 variable that indicates whether the mixture is more effective than the most
+  #effective singleton in that mixture.
+  d.temp$exceeds <- NA
+  
+  for(i in 1:length(d.temp$Species)){
+    sp <- d.temp$Species[i]
+    if(d.temp$Richness[i] > 1){
+      t <- d.temp$Treatment[i]
+      #mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
+      #singleton.mean <- mean(d.temp$PropSurv.ST[which(d.temp$Species==sp & d.temp$Treatment %in% mix)])
+      singleton.mean <- mean(d.temp$PropSurv.ST[which(d.temp$Species==sp & d.temp$Richness==1)])
+      d.temp$exceeds[i] <- ifelse(d.temp$PropSurv.ST[i] < singleton.mean, 1, 0)
+    } else {
+      d.temp$exceeds[i] <- NA
+    }
+  }
+  
+  
+  
+  ##Can now do a binomial glm to ask whether the likelihood of a treatment being more effective
+  #than the most effective single compound increases with increasing richness
+  
+  #  For Hz
+  d.temp2 <- d.temp[which(d.temp$Species=="Hz" & d.temp$Richness >1),]
+  m1.Hz <- summary(glm(exceeds ~ Richness, data=d.temp2, family=binomial))
+  
+  #For Sf
+  d.temp2 <- d.temp[which(d.temp$Species=="Sf" & d.temp$Richness>1),]
+  m1.Sf <- summary(glm(exceeds ~ Richness, data=d.temp2, family=binomial))
+  
+  #For Px
+  d.temp2 <- d.temp[which(d.temp$Species=="Px" & d.temp$Richness >1),]
+  m1.Px <- summary(glm(exceeds ~ Richness, data=d.temp2, family=binomial))
+
+  #for Cp
+  d.temp2 <- d.temp[which(d.temp$Species=="Cp" & d.temp$Richness >1),]
+  m1.Cp <- summary(glm(exceeds ~ Richness, data=d.temp2, family=binomial))
+
+  
+  #Add stats to summary table
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("S", "Hz", m1.Hz$coefficients[2,1], m1.Hz$coefficients[2,3], m1.Hz$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("S", "Sf", m1.Sf$coefficients[2,1], m1.Sf$coefficients[2,3], m1.Sf$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("S", "Cp", m1.Cp$coefficients[2,1], m1.Cp$coefficients[2,3], m1.Cp$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("S", "Px", m1.Px$coefficients[2,1], m1.Px$coefficients[2,3], m1.Px$coefficients[2,4]))
+  
+  
+  
+  
+  #----------------For Fungal Growth
+  
+  #Getting means for each treatment
+  
+  d.temp <- d.fungi2
+  
+  #randomize data
+  d.temp <- d.temp %>% 
+    group_by(Fungi) %>% 
+    mutate(dAbs.ST = dAbs.ST[sample(row_number())]) 
+  
+  means.F <- d.temp %>%
+    group_by(Fungi, Treatment, Richness) %>%
+    summarise(avg=mean(dAbs.ST, na.rm=TRUE))
+  
+  #Need to create a 0/1 variable that indicates whether the mixture is more effective than the most
+  #effective singleton in that mixture.
+  means.F$exceeds <- NA
+  means.F$Richness[which(means.F$Treatment=="DMSO")] <- 0
+  
+  for(i in 1:length(means.F$Fungi)){
+    sp <- means.F$Fungi[i]
+    if(means.F$Richness[i] > 1){
+      t <- means.F$Treatment[i]
+      #mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
+      #singleton.mean <- mean(means.F$avg[which(means.F$Fungi==sp & means.F$Treatment %in% mix)])
+      singleton.mean <- mean(means.F$avg[which(means.F$Fungi==sp & means.F$Richness==1)])
+      means.F$exceeds[i] <- ifelse(means.F$avg[i] < singleton.mean, 1, 0)
+    } else {
+      means.F$exceeds[i] <- NA
+    }
+  }
+  
+  
+  
+  ##Can now do a binomial glm to ask whether the likelihood of a treatment being more effective
+  #than the most effective single compound increases with increasing richness
+  
+  #  For Botrys
+  d.temp <- means.F[which(means.F$Fungi=="Botrys" & means.F$Richness >1),]
+  m1.Botrys <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+ 
+  #For Collet
+  d.temp <- means.F[which(means.F$Fungi=="Collet" & means.F$Richness>1),]
+  m1.Collet <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+  
+  #For Sclerotinia
+  d.temp <- means.F[which(means.F$Fungi=="Sclerotinia" & means.F$Richness >1),]
+  m1.Sclerotinia <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+  
+  #for Penicillium
+  d.temp <- means.F[which(means.F$Fungi=="Penicillium" & means.F$Richness >1),]
+  m1.Penicillium <- summary(glm(exceeds ~ Richness, data=d.temp, family=binomial))
+ 
+  
+  #Add stats to summary table
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("F", "Botrys", m1.Botrys$coefficients[2,1], m1.Botrys$coefficients[2,3], m1.Botrys$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("F", "Collet", m1.Collet$coefficients[2,1], m1.Collet$coefficients[2,3], m1.Collet$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("F", "Penicillium", m1.Penicillium$coefficients[2,1], m1.Penicillium$coefficients[2,3], m1.Penicillium$coefficients[2,4]))
+  m.sum.SvsM <- rbind(m.sum.SvsM,
+                      c("F", "Sclerotinia", m1.Sclerotinia$coefficients[2,1], m1.Sclerotinia$coefficients[2,3], m1.Sclerotinia$coefficients[2,4]))
+
+  
+  
+  m.sum.SvsM$Run <- k
+  m.sum.SvsM.null <- rbind(m.sum.SvsM.null, m.sum.SvsM)
+  
+}
+
+m.sum.SvsM.null$P <- as.numeric(m.sum.SvsM.null$P)
+
+hist(m.sum.SvsM.null$P)
+
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05)])
+length(m.sum.SvsM.null$Z[which(m.sum.SvsM.null$Z < 0 )])
+length(m.sum.SvsM.null$Z[which(m.sum.SvsM.null$Z < 0 & m.sum.SvsM.null$P < 0.05)])
+length(m.sum.SvsM.null$Z[which(m.sum.SvsM.null$Z > 0 & m.sum.SvsM.null$P < 0.05)])
+
+##the p-value was < 0.05 in 74 of 1600 tests (=0.046 proportionally) 
+#about half are negative and half are positive
+#this suggests the multi-step analysis approach is not biasing the 
+#results toward rejecting/supporting hypotheses
+
+
+#check to see if these are equally distributed across species, we would expect
+#that we should have ~15 for each insect and ~5 for each fungi, 
+#assuming we had 80 total false positives out of 1600 (alpha=0.05)
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Hz")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Sf")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Px")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Cp")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Botrys")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Collet")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Penicillium")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Sclerotinia")])
+#these are variable, but I ran this several times and there is no consistent
+#pattern across species
+
+
+#and there should be ~20 per response variable
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric=="PW")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric=="DtP")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric=="F")])
+length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric=="S")])
+
+  
+    
+#*******************************************************************************
+  
+  
+    
+
+
+# Effects of Richness and SD on Number of Effects (Prediction 2a and 2b)----
+
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -2465,10 +2708,14 @@ d.sum2.means2  #use this to report effect size in paper.
 NumEffects.rich <- d.sum2
 save.image("./Outputs/Workspaces/FinalAnalyses_Pred2a-2b_NumEffects")
 
+#**************************************************************
 
-#-------------------------------------------------------------------------
-# Most compounds effective against at least one consumer (Prediction 2d) OR NOT (Prediction 3a)
-#-----------------------------
+
+
+
+
+# Most compounds effective against at least one consumer (Prediction 2d) OR NOT (Prediction 3a)----
+
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -2664,15 +2911,12 @@ length(d.sum.F$TxMoreRes.F)
 
 save.image("./Outputs/Workspaces/FinalAnalyses_Pred2d&3a_IndivComps")
 
+#**************************************************************
 
 
 
 
-
-
-#--------------------------------------------------------------------------
-# Effect of compound depends on herbivore identity (Prediction 2e)
-#------------------------------
+# Effect of compound depends on herbivore identity (Prediction 2e)----
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -2714,12 +2958,11 @@ plot(m.F.1)
 drop1(m.F.1, test="Chisq") #Use for Table S8
 drop1(m.F.2, test="Chisq")
 
+#**************************************************************
 
 
 
-#--------------------------------------------------------------
-####  One or few compounds sufficient to explain performance (Prediction 3b)   
-#--------------------------------
+# One or few compounds sufficient to explain performance (Prediction 3b)----   
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -2771,9 +3014,11 @@ tbl.S9.F <- data.frame(summary(s1.F)$coefficients)
 
 #Use tbl.S9.-  PW, DtP, S, and F for Table S9
 
-#------------------------------------------------------------------
-####   Little or no variation is explained by specific mixture (Prediction 3c)
-#-------------------------------
+#**************************************************************
+
+
+
+# Little or no variation is explained by specific mixture (Prediction 3c)----
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -3049,10 +3294,12 @@ tbl.S10$percVar <- tbl.S10$percVar*100
 
 write.csv(tbl.S10, "./Outputs/Tables/TableS10_Pred3c_TreatmentEffects.csv")
 
+#**************************************************************
 
-#---------------------------------------------------------------------
-# Supplemental: Effects of evenness and SD on performance
-#--------------------------------
+
+
+
+# Supplemental: Effects of evenness and SD on performance----
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -3395,11 +3642,13 @@ write.csv(m.sum.E, file="./Outputs/Tables/TableS14_Evenness_Performance.csv")
 #Save workspace
 save.image("./Outputs/Workspaces/FinalAnalyses_Evenness_Performance")
 
+#**************************************************************
 
 
-#--------------------------------------------------------------------
-#Supplemental: Effects of evenness on number of effects
-#-----------------------------------------------
+
+
+# Supplemental: Effects of evenness on number of effects----
+
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -3535,12 +3784,12 @@ d.sum2.means2
 NumEffects.even <- d.sum2 
 save.image("./Outputs/Workspaces/FinalAnalyses_Evenness_NumEffects")
 
+#**************************************************************
 
 
 
-#--------------------------------------------------------------
-#Supplemental: Molecular weight and bioactivity
-#----------------------------------------
+
+# Supplemental: Molecular weight and bioactivity----
 
 ##in response to reviews and thinking about whether we can compare 
 #compound bioactivities because they were present in different molar concentrations
@@ -3665,4 +3914,4 @@ d.temp <- left_join(d.temp, MW, by="Treatment")
 plot(dAbs.avg ~ MW, data=d.temp)
 summary(lm(dAbs.avg ~ MW, data=d.temp))
 
-
+#****************************************************************

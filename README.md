@@ -97,7 +97,7 @@ There are three scripts:
 This script was used to calculate the structural similarly of mixtures using ChemmineR and then semi-randomly select mixtures for inclusion in the study.
 
 ### Script_FinalAnalysesforMS.R
-This script includes all statistical analyses. It is divided into sections (based on different predictions tested) that can be run indepently.
+This script includes all statistical analyses. It is divided into sections (based on different predictions tested) that can be run independently.
 
 ### Script_FinalFigsforMS.R
 This script includes code for all the figures in the manuscript and supplement, based on ggplot.
