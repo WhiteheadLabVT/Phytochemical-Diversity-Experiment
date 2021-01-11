@@ -7,15 +7,15 @@ library(MuMIn)
 library(stringr)
 library(ggplot2)
 library(tidyr)
-library(MASS)
-library(sjstats) #for ICC (intraclass correlation coefficient) calcs
+library(MASS) #for negative binomial GLMs in Pred 2a/2b and stepwise model selection in Pred 3b
+#library(sjstats) #for ICC (intraclass correlation coefficient) calcs
 
 
 ##Data standardization must be run first and workspace saved. After that, all other
 #sections of code can be run independently
 
-
 # Data standardization and calculations-----
+#--------------------
 
 #load data
 d.rich <- read.csv("Whitehead_et_al_Insects.csv")  
@@ -243,6 +243,53 @@ counts2 <- pivot_wider(counts, names_from = Fungi, values_from = n)
 
 
 
+#There was some concern during review that repetition of some treatments
+#for insects (in just a few cases where we had low survival rates)
+#could affect the outcome of the results. Thus, we also tried this analysis
+#but dropping cases where there was repetition of treatments
+
+#Checking out cases of repetition 
+expreps <- d.rich %>%
+  group_by(Species, Treatment, exp) %>%
+  summarise(n.surv = sum(!is.na(Surv)), n.pw = sum(!is.na(Pupal.weight)))
+
+table(expreps$Treatment)
+#H8B for Px is in exp 6+7 (12 insects in 6, 11 died)
+#H8C is in 6+7 for Sf, Hz, and Cp
+#L2A is in 6+7 for Sf  (only one insect in 6)
+#M2B is in 6+7 for Cp (only 2 insects in 6)
+#M4B is in 6+7 for Px (should drop 7, only one insect)
+#M8B is in 6+8, fully repeated in 8 for all insects
+#R is in 6+8, fully repeated in 8 for all insects
+#some of these with only one insect could be typos? 
+
+d.rich2 <- d.rich
+d.rich2 <- d.rich2[-which(d.rich2$Treatment=="H8B" & d.rich2$exp==6),] 
+d.rich2 <- d.rich2[-which(d.rich2$Treatment=="H8C" & d.rich2$exp==6),] 
+d.rich2 <- d.rich2[-which(d.rich2$Treatment=="L2A" & d.rich2$exp==6),] 
+d.rich2 <- d.rich2[-which(d.rich2$Treatment=="M2B" & d.rich2$exp==6),] 
+d.rich2 <- d.rich2[-which(d.rich2$Treatment=="M4B" & d.rich2$exp==7),] 
+d.rich2 <- d.rich2[-which(d.rich2$Treatment=="M8B" & d.rich2$exp==6),] 
+d.rich2 <- d.rich2[-which(d.rich2$Treatment=="R" & d.rich2$exp==6),] 
+
+d.rich.PS2 <- d.rich2 %>%  group_by(Species, Richness, SD, Treatment, exp) %>%
+  summarise(dead=length(which(Surv==0)), alive=length(which(Surv==1)), 
+            PropSurv=length(which(Surv==1))/length(Surv)) 
+
+d.rich.PS2$PropSurv.ST <- NA
+#Creating standardized variable relative to controls
+for (i in 1:length(d.rich.PS2$Species)){
+  exp <- d.rich.PS2$exp[i]
+  Sp <- d.rich.PS2$Species[i]
+  Cval <- mean(d.rich.PS2$PropSurv[which(d.rich.PS2$Treatment=="C" & d.rich.PS2$exp==exp & 
+                                          d.rich.PS2$Species==Sp)])
+  d.rich.PS2$PropSurv.ST[i] <- d.rich.PS2$PropSurv[i]/Cval
+}
+
+
+#can try running analyses with d.rich2 to see if this affects outcomes
+
+
 #Saving this workspace. Many other analyses below will depend on these standardized
 #variables. 
 
@@ -252,9 +299,8 @@ save.image("./Outputs/Workspaces/StandardizedData")
 
 
 
-
 # Effects of richness and SD on performance (Predictions 1a, 1b, 1c)-----
-
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -802,7 +848,154 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Pred1a-1c")
 
 
 
+#---Prediction 1a/1b/1c null models----
+#----
+
+load("./Outputs/Workspaces/StandardizedData")
+
+#------For Insects
+
+#---all species combined
+
+#make table to store stats across all iterations
+m.PW.null <- data.frame(SDL=numeric())
+
+for (i in 1:100){
+  #Looking at effects of Richness, SD, Species, and Sex on pupal weights
+  d.temp <- filter (d.rich, Treatment != "C", !is.na(Sex), !is.na(Pupal.weight.ST))
+  
+  #randomizing data
+  d.temp <- d.temp %>% 
+    ungroup() %>%
+    mutate(Pupal.weight.ST = Pupal.weight.ST[sample(row_number())]) 
+  
+  m1.all.PW <- lmer(Pupal.weight.ST ~ SD*Richness*Species*Sex + (1|Treatment) + (1|exp/TrayID/CupID), 
+                    data = d.temp, na.action=na.fail, REML="FALSE")
+  d1.all.PW <- dredge(m1.all.PW)
+  s <- subset(d1.all.PW, delta < 4)
+  s  #use for table S3
+  d1.all.PW.avg <- model.avg(d1.all.PW, subset = delta < 4, fit=TRUE)
+  sum <- summary(d1.all.PW.avg)  #use for table S4
+  newrow <- data.frame(coef=rownames(sum$coefmat.full), P=sum$coefmat.full[,5])
+  newrow <- pivot_wider(newrow, names_from = coef, values_from = P)
+  m.PW.null <- full_join(m.PW.null, newrow)
+}
+
+T1 <- function(x){
+  l <- length(x[which(x < 0.05)])
+  na <- length(x[which(!is.na(x))])
+  ifelse(na >= 10, return(l/na), return (NA))
+}
+
+T1rates <- m.PW.null %>%
+  summarise_all(list(T1rate=T1)) 
+
+
+
+#Effects on days to pupation
+m.DtP.null <- data.frame(SDL=numeric())
+
+for (i in 1:100){
+  #Looking at effects of Richness, SD, Species, and Sex on DtP
+  d.temp <- filter (d.rich, Treatment != "C", !is.na(Sex), !is.na(Days.to.pupation.ST.inv))
+  
+  #randomizing data
+  d.temp <- d.temp %>% 
+    ungroup() %>%
+    mutate(Days.to.pupation.ST.inv = Days.to.pupation.ST.inv[sample(row_number())]) 
+  
+  m1.all.DtP <- lmer(Days.to.pupation.ST.inv ~ SD*Richness*Species*Sex + (1|Treatment) + (1|exp/TrayID/CupID), 
+                    data = d.temp, na.action=na.fail, REML="FALSE")
+  d1.all.DtP <- dredge(m1.all.DtP)
+  s <- subset(d1.all.DtP, delta < 4)
+  s  #use for table S3
+  d1.all.DtP.avg <- model.avg(d1.all.DtP, subset = delta < 4, fit=TRUE)
+  sum <- summary(d1.all.DtP.avg)  #use for table S4
+  newrow <- data.frame(coef=rownames(sum$coefmat.full), P=sum$coefmat.full[,5])
+  newrow <- pivot_wider(newrow, names_from = coef, values_from = P)
+  m.DtP.null <- full_join(m.DtP.null, newrow)
+}
+
+T1 <- function(x){
+  l <- length(x[which(x < 0.05)])
+  na <- length(x[which(!is.na(x))])
+  ifelse(na >= 10, return(l/na), return (NA))
+}
+
+T1rates.DtP <- m.DtP.null %>%
+  summarise_all(list(T1rate=T1)) 
+
+
+
+##Effects on survival
+
+m.S.null <- data.frame(SDL=numeric())
+
+for (i in 1:100){
+
+  d.temp <- filter (d.rich.PS, Treatment != "C", !is.na(PropSurv.ST))
+  
+  #randomizing data
+  d.temp <- d.temp %>% 
+    ungroup() %>%
+    mutate(PropSurv.ST = PropSurv.ST[sample(row_number())]) 
+  
+  
+  m1.all.S <- lmer(PropSurv.ST ~ SD*Richness*Species + (1|Treatment) + (1|exp), 
+                   data = d.temp, na.action=na.fail, REML="FALSE")
+  d1.all.S <- dredge(m1.all.S)
+  s <- subset(d1.all.S, delta < 4)
+  s #use for table S3
+  d1.all.S.avg <- model.avg(d1.all.S, subset =  delta < 4, fit=TRUE)
+  sum <- summary(d1.all.S.avg)  #use for table S4
+  newrow <- data.frame(coef=rownames(sum$coefmat.full), P=sum$coefmat.full[,5])
+  newrow <- pivot_wider(newrow, names_from = coef, values_from = P)
+  m.S.null <- full_join(m.S.null, newrow)
+
+}  
+
+T1rates.S <- m.S.null %>%
+  summarise_all(list(T1rate=T1))   
+
+
+#---For Fungi
+
+#---- all fungi combined
+
+m.f.null <- data.frame(SDL=numeric())
+
+for (i in 1:100){
+
+  #ALL fungal species together
+  d.temp <- filter (d.fungi2, Treatment != "DMSO")
+  
+  #randomizing data
+  d.temp <- d.temp %>% 
+    ungroup() %>%
+    mutate(dAbs.ST = dAbs.ST[sample(row_number())]) 
+  
+  m1.all.f <- lmer(dAbs.ST ~ SD*Richness*Fungi + (1|Treatment) + (1|Plate), 
+                   data = d.temp, na.action=na.fail, REML="FALSE")
+  d1.all.f <- dredge(m1.all.f)
+  d1.all.f  #top model contains all factors and dAIC to next best is 36.12, retain all
+  summary(d1.all.f)
+  
+  d1.all.avg <- model.avg(d1.all.f, fit=TRUE)
+  
+  sum <- summary(d1.all.avg) #use for S4
+  newrow <- data.frame(coef=rownames(sum$coefmat.full), P=sum$coefmat.full[,5])
+  newrow <- pivot_wider(newrow, names_from = coef, values_from = P)
+  m.f.null <- full_join(m.f.null, newrow)
+}
+
+T1rates.f <- m.f.null %>%
+  summarise_all(list(T1rate=T1)) 
+
+save.image("./Outputs/Workspaces/FinalAnalyses_Pred1a-1c_nullmodels")
+
+
 # Testing whether synergy increases with richness (Prediction 1d)----
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -1313,7 +1506,8 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Pred1d_synergy")
 #export data for table 2
 write.csv(m.sum.RvsS, "./Outputs/Tables/TableS6_Pred1d_synergy.csv")
 
-# ---Prediction 1d null models------
+#---Prediction 1d null models-----
+#----
 
 #During the review process, there was some concern that these models
 #rely on using the output from one analysis to inform the next, and that
@@ -1321,7 +1515,7 @@ write.csv(m.sum.RvsS, "./Outputs/Tables/TableS6_Pred1d_synergy.csv")
 #It was suggested that we create a set of null models that use a 
 #randomized dataset to compare the output to those models 
 
-#This section repeats the analysis above for Prediction 1d 100 times with 
+#This section repeats the analysis above for Prediction 1d 1000 times with 
 #different randomizations of the dataset. Each run is a new randomization
 #of the three response variables in the dataset used in the analysis: pupal weight
 #days to pupation, and fungal growth
@@ -1333,7 +1527,7 @@ write.csv(m.sum.RvsS, "./Outputs/Tables/TableS6_Pred1d_synergy.csv")
 #make table to store stats across all iterations
 m.sum.RvsS.null <- data.frame(Metric=NA, Sp=NA, Slope=NA, Z=NA, P=NA, Run=NA)
 
-for(k in 1:100){
+for(k in 1:1000){
 
 #table to store stats for models testing effects of richness on interaction index    
 m.sum.RvsS <- data.frame(Metric=NA, Sp=NA, Slope=NA, Z=NA, P=NA)
@@ -1711,14 +1905,14 @@ hist(m.sum.RvsS.null$P)
 
 length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05)])
 
-##the p-value was < 0.05 in 53 of 1200 tests (=0.044 proportionally) 
+##the p-value was < 0.05 in 474 of 12000 tests (=0.0395 proportionally) 
 #this suggests the multi-step analysis approach is not biasing the 
 #results toward rejecting/supporting hypotheses
 
 
 #check to see if these are equally distributed across species, we would expect
-#that we should have ~10 for each insect and ~5 for each fungi, 
-#assuming we had 60 total false positives out of 1200 (alpha=0.05)
+#that we should have ~100 for each insect and ~50 for each fungi, 
+#assuming we had 600 total false positives out of 1200 (alpha=0.05)
 length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Hz")])
 length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Sf")])
 length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="Px")])
@@ -1732,10 +1926,13 @@ length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Sp=="S
 #pattern across species
 
 
-#and there should be ~20 per response variable
+#and there should be ~200 per response variable
 length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Metric=="PW")])
 length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Metric=="DtP")])
 length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Metric=="F")])
+
+save.image("./Outputs/Workspaces/FinalAnalyses_Pred1d_nullmodels")
+
 
 #********************************************************************
 
@@ -1744,7 +1941,7 @@ length(m.sum.RvsS.null$P[which(m.sum.RvsS.null$P < 0.05 & m.sum.RvsS.null$Metric
 
 
 # Comparing mixtures to average effectiveness of singletons (Prediction 1e)----
-
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -2200,7 +2397,8 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Pred1e_singletonsVSmix")
 #**************************************************************
 
 
-# ----Prediction 1e null models-------------------
+#----Prediction 1e null models----
+#----
 
 #During the review process, there was some concern that these models
 #rely on using the output from one analysis to inform the next, and that
@@ -2215,7 +2413,7 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Pred1e_singletonsVSmix")
 #make table to store stats across all iterations
 m.sum.SvsM.null <- data.frame(Metric=NA, Sp=NA, Slope=NA, Z=NA, P=NA, Run=NA)
 
-for(k in 1:100){
+for(k in 1:1000){
 
   ##Using data from the richness experiment. 
   
@@ -2245,9 +2443,8 @@ for(k in 1:100){
     sp <- means.PW$Species[i]
     if(means.PW$Richness[i] > 1){
       t <- means.PW$Treatment[i]
-      #mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
-      #singleton.mean <- mean(means.PW$avg[which(means.PW$Species==sp & means.PW$Treatment %in% mix)])
-      singleton.mean <- min(means.PW$avg[which(means.PW$Species==sp & means.PW$Richness==1)])
+      mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
+      singleton.mean <- mean(means.PW$avg[which(means.PW$Species==sp & means.PW$Treatment %in% mix)])
       means.PW$exceeds[i] <- ifelse(means.PW$avg[i] < singleton.mean, 1, 0)
     } else {
       means.PW$exceeds[i] <- NA
@@ -2309,9 +2506,8 @@ for(k in 1:100){
     sp <- means.DtP$Species[i]
     if(means.DtP$Richness[i] > 1){
       t <- means.DtP$Treatment[i]
-      #mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
-      #singleton.mean <- mean(means.DtP$avg[which(means.DtP$Species==sp & means.DtP$Treatment %in% mix)])
-      singleton.mean <- min(means.DtP$avg[which(means.DtP$Species==sp & means.DtP$Richness==1)])
+      mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
+      singleton.mean <- mean(means.DtP$avg[which(means.DtP$Species==sp & means.DtP$Treatment %in% mix)])
       means.DtP$exceeds[i] <- ifelse(means.DtP$avg[i] < singleton.mean, 1, 0)
     } else {
       means.DtP$exceeds[i] <- NA
@@ -2371,9 +2567,8 @@ for(k in 1:100){
     sp <- d.temp$Species[i]
     if(d.temp$Richness[i] > 1){
       t <- d.temp$Treatment[i]
-      #mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
-      #singleton.mean <- mean(d.temp$PropSurv.ST[which(d.temp$Species==sp & d.temp$Treatment %in% mix)])
-      singleton.mean <- mean(d.temp$PropSurv.ST[which(d.temp$Species==sp & d.temp$Richness==1)])
+      mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
+      singleton.mean <- mean(d.temp$PropSurv.ST[which(d.temp$Species==sp & d.temp$Treatment %in% mix)])
       d.temp$exceeds[i] <- ifelse(d.temp$PropSurv.ST[i] < singleton.mean, 1, 0)
     } else {
       d.temp$exceeds[i] <- NA
@@ -2439,9 +2634,9 @@ for(k in 1:100){
     sp <- means.F$Fungi[i]
     if(means.F$Richness[i] > 1){
       t <- means.F$Treatment[i]
-      #mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
-      #singleton.mean <- mean(means.F$avg[which(means.F$Fungi==sp & means.F$Treatment %in% mix)])
-      singleton.mean <- mean(means.F$avg[which(means.F$Fungi==sp & means.F$Richness==1)])
+      mix <- colnames(d.rich[which(d.rich[which(d.rich$Treatment==t)[1], 12:25]>0) + 11]) 
+      singleton.mean <- mean(means.F$avg[which(means.F$Fungi==sp & means.F$Treatment %in% mix)])
+      #singleton.mean <- mean(means.F$avg[which(means.F$Fungi==sp & means.F$Richness==1)])
       means.F$exceeds[i] <- ifelse(means.F$avg[i] < singleton.mean, 1, 0)
     } else {
       means.F$exceeds[i] <- NA
@@ -2496,15 +2691,15 @@ length(m.sum.SvsM.null$Z[which(m.sum.SvsM.null$Z < 0 )])
 length(m.sum.SvsM.null$Z[which(m.sum.SvsM.null$Z < 0 & m.sum.SvsM.null$P < 0.05)])
 length(m.sum.SvsM.null$Z[which(m.sum.SvsM.null$Z > 0 & m.sum.SvsM.null$P < 0.05)])
 
-##the p-value was < 0.05 in 74 of 1600 tests (=0.046 proportionally) 
+##the p-value was < 0.05 in 711 of 16000 tests (=0.044 proportionally) 
 #about half are negative and half are positive
 #this suggests the multi-step analysis approach is not biasing the 
 #results toward rejecting/supporting hypotheses
 
 
 #check to see if these are equally distributed across species, we would expect
-#that we should have ~15 for each insect and ~5 for each fungi, 
-#assuming we had 80 total false positives out of 1600 (alpha=0.05)
+#that we should have ~150 for each insect and ~50 for each fungi, 
+#assuming we had 800 total false positives out of 1600 (alpha=0.05)
 length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Hz")])
 length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Sf")])
 length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="Px")])
@@ -2517,11 +2712,12 @@ length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Sp=="S
 #pattern across species
 
 
-#and there should be ~20 per response variable
+#and there should be ~200 per response variable
 length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric=="PW")])
 length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric=="DtP")])
 length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric=="F")])
 length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric=="S")])
+
 
   
     
@@ -2531,8 +2727,9 @@ length(m.sum.SvsM.null$P[which(m.sum.SvsM.null$P < 0.05 & m.sum.SvsM.null$Metric
     
 
 
-# Effects of Richness and SD on Number of Effects (Prediction 2a and 2b)----
 
+# Effects of Richness and SD on Number of Effects (Prediction 2a and 2b)----
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -2550,6 +2747,9 @@ d.sum$PW.CI.high <- d.sum$PW.avg + (1.96*d.sum$PW.SD/sqrt(d.sum$PW.n))
 
 d.sum$DtP.CI.low <- d.sum$DtP.avg - (1.96*d.sum$DtP.SD/sqrt(d.sum$DtP.n))
 d.sum$DtP.CI.high <- d.sum$DtP.avg + (1.96*d.sum$DtP.SD/sqrt(d.sum$DtP.n))
+#Note we are using 95% CIs here as the cutoff for considering an organism
+#"affected" but we get similar results with different thresholds, e.g. 
+#using 90% CIs (change to 1.645)
 
 
 ##Add binary variable that indicates whether there is a significant effect (i.e. CI
@@ -2602,6 +2802,21 @@ for(i in 1:length(d.temp.PS$Treatment)){
 
 
 d.sum$OrgAffected <- ifelse(d.sum$TxMoreRes.PW==1 | d.sum$TxMoreRes.DtP==1 |d.sum$TxMoreRes.S==1, 1, 0)
+
+#Note that this counts an insect as affected if ANY of 
+#the three performance metrics are affected. There was some concern during the
+#review process that this "any will do" approach could mean that we are more
+#likely to count insects as affected overall than fungi, which could affect
+#the outcome of the results. Thus, we also tried the same approach, but only 
+#using DtP for insects, which was the most commonly affected, by running same
+#analysis with the below calculation for OrgAffected. Using that, we 
+#still see an effect of richness and a marginal effect of SD on the number
+#of organisms affected
+
+#d.sum$OrgAffected <- ifelse(d.sum$TxMoreRes.DtP==1, 1, 0)
+
+
+
 d.sum <- mutate(d.sum, NumEffects=TxMoreRes.PW + TxMoreRes.DtP + TxMoreRes.S)
 
 #Now adding in fungi
@@ -2662,16 +2877,20 @@ m2 <- glm(NumOrgAffected ~ Richness, data=d.sum2, family=poisson)
 summary(m2)
 m3 <- glm(NumOrgAffected ~ Richness, data=d.sum2, family=quasipoisson)
 summary(m3)  #no AIC score
+m4 <- glm.nb(NumOrgAffected ~ Richness, data=d.sum2) #negative binomial
+summary(m4)
 
-plot(m1)
-plot(m2)
-plot(m3)
+AIC(m1,m2,m3,m4)
+
+
+#plot(m1)
+#plot(m2)
+#plot(m3)
 #these all look fairly similar
 #but AIC lower with gaussian than poisson
 
 hist(resid(m1))  #these actually look pretty good
-
-AIC(m1,m2, m3)
+shapiro.test(resid(m1))
 
 #Seems the best test is the gaussian, but all seem to be giving qualitatively similar results
 #will use results from m1
@@ -2694,8 +2913,11 @@ plot(jitter(NumOrgAffected) ~ SD, data=d.sum2)
 m1 <- glm(NumOrgAffected ~ SD, data=d.sum2)
 summary(m1)
 summary(glht(m1, linfct=mcp(SD="Tukey")))
+drop1(m1, test="Chisq")
 
-#low has fewer effects than medium or high!!
+hist(resid(m1))
+
+#low has fewer effects than medium or high
 
 #checking means
 d.sum2.means2 <- d.sum2 %>%
@@ -2710,12 +2932,247 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Pred2a-2b_NumEffects")
 
 #**************************************************************
 
+#--------Predictions 2a/2b null models----
+#----
+
+
+#During the review process, there was some concern that these models
+#rely on using the output from one analysis to inform the next, and that
+#it is not clear how error and variance propagate through the models. 
+#It was suggested that we create a set of null models that use a 
+#randomized dataset to compare the output to those models 
+
+#This section repeats the analysis above for Prediction 2a/2b 100 times with 
+#different randomizations of the dataset. 
+
+load("./Outputs/Workspaces/StandardizedData")
+
+
+#make table to store stats across all iterations
+rich.sum.null <- data.frame(run=NA, Estimate=NA, t=NA, p=NA)
+SD.sum.null <- data.frame(run=NA, SDL=NA, SDM=NA, SDH=NA, Fstat=NA, p=NA)
+
+for(k in 1:10000){
+
+d.temp <- d.rich
+
+#randomizing data, in this case first splitting by species, then randomizing
+#such that the three performance metrics (PW, DtP, S) all stay together
+#for a single individual, but are randomized across treatment
+
+d.temp.Hz <- d.temp[which(d.temp$Species=="Hz"),]
+s <- sample(row_number(d.temp.Hz$Pupal.weight.ST))
+d.temp.Hz <- d.temp.Hz %>% 
+  mutate(Pupal.weight.ST = Pupal.weight.ST[s],
+         Days.to.pupation.ST.inv = Days.to.pupation.ST.inv[s],
+         Surv = Surv[s]) 
+
+d.temp.Sf <- d.temp[which(d.temp$Species=="Sf"),]
+s <- sample(row_number(d.temp.Sf$Pupal.weight.ST))
+d.temp.Sf <- d.temp.Sf %>% 
+  mutate(Pupal.weight.ST = Pupal.weight.ST[s],
+         Days.to.pupation.ST.inv = Days.to.pupation.ST.inv[s],
+         Surv = Surv[s]) 
+
+d.temp.Cp <- d.temp[which(d.temp$Species=="Cp"),]
+s <- sample(row_number(d.temp.Cp$Pupal.weight.ST))
+d.temp.Cp <- d.temp.Cp %>% 
+  mutate(Pupal.weight.ST = Pupal.weight.ST[s],
+         Days.to.pupation.ST.inv = Days.to.pupation.ST.inv[s],
+         Surv = Surv[s]) 
+
+d.temp.Px <- d.temp[which(d.temp$Species=="Px"),]
+s <- sample(row_number(d.temp.Px$Pupal.weight.ST))
+d.temp.Px <- d.temp.Px %>% 
+  mutate(Pupal.weight.ST = Pupal.weight.ST[s],
+         Days.to.pupation.ST.inv = Days.to.pupation.ST.inv[s],
+         Surv = Surv[s]) 
+
+#re-assembling data for four species
+d.temp <- rbind(d.temp.Hz, d.temp.Sf, d.temp.Cp, d.temp.Px)
+
+#summarizing by treatment
+d.sum <- d.temp %>% 
+  group_by(Richness, SD, Treatment, Species) %>%
+  summarise(PW.avg = mean(Pupal.weight.ST, na.rm=TRUE), PW.SD=sd(Pupal.weight.ST, na.rm=TRUE),
+            PW.n = sum(!is.na(Pupal.weight.ST)), DtP.avg= mean(Days.to.pupation.ST.inv, na.rm=TRUE), 
+            DtP.SD=sd(Days.to.pupation.ST.inv, na.rm=TRUE), DtP.n = sum(!is.na(Days.to.pupation.ST.inv)))%>%
+  ungroup()
+
+d.sum$PW.CI.low <- d.sum$PW.avg - (1.96*d.sum$PW.SD/sqrt(d.sum$PW.n))
+d.sum$PW.CI.high <- d.sum$PW.avg + (1.96*d.sum$PW.SD/sqrt(d.sum$PW.n))
+
+d.sum$DtP.CI.low <- d.sum$DtP.avg - (1.96*d.sum$DtP.SD/sqrt(d.sum$DtP.n))
+d.sum$DtP.CI.high <- d.sum$DtP.avg + (1.96*d.sum$DtP.SD/sqrt(d.sum$DtP.n))
+
+
+##Add binary variable that indicates whether there is a significant effect (i.e. CI
+#crosses 1) for each treatment
+
+d.sum$TxMoreRes.PW <- NA
+d.sum$TxMoreRes.DtP <- NA
+for(i in 1:length(d.sum$TxMoreRes.PW)){ 
+  d.sum$TxMoreRes.PW[i] <-ifelse(d.sum$PW.CI.high[i] < 1, 1, 0)
+  d.sum$TxMoreRes.DtP[i] <-ifelse(d.sum$DtP.CI.high[i] < 1, 1, 0)
+}            
+
+
+
+#For survival
+#note the survival data from d.temp was already
+#randomized together with the PW and DtP data above
+
+#summarizing by treatment
+d.temp2 <- d.temp %>%  group_by(Species, Richness, SD, Treatment, exp) %>%
+  summarise(dead=length(which(Surv==0)), alive=length(which(Surv==1)), 
+            PropSurv=length(which(Surv==1))/length(Surv)) 
+
+d.temp.PS <- d.temp2[which(d.temp2$Treatment !="C"),]
+d.temp.PS.C <- d.temp2[which(d.temp2$Treatment=="C"),]
+
+
+d.sum$S.Tx.alive <- NA
+d.sum$S.Tx.dead <- NA
+d.sum$S.C.alive <- NA
+d.sum$S.C.dead <- NA
+d.sum$S.pval <- NA
+d.sum$TxMoreRes.S <- NA
+
+for(i in 1:length(d.temp.PS$Treatment)){
+  Sp <- d.temp.PS$Species[i]
+  Tx <- d.temp.PS$Treatment[i]
+  exp <- d.temp.PS$exp[i]
+  Cs <- d.temp.PS.C[which(d.temp.PS.C$exp==exp & d.temp.PS.C$Species==Sp),]
+  
+  #Is the prob of survival different in Tx vs C?
+  Chi.tbl <- rbind(c(d.temp.PS$dead[i], d.temp.PS$alive[i]),
+                   c(Cs$dead, Cs$alive))
+  p <- fisher.test(Chi.tbl)$p.value
+  
+  #Is prob of survival higher in C? 1=yes, 0=no
+  TxHigh <- ifelse(d.temp.PS$dead[i]/(d.temp.PS$dead[i] + d.temp.PS$alive[i]) >
+                     Cs$dead/(Cs$dead + Cs$alive), 1, 0)
+  TxMoreRes <- ifelse(p < 0.05 & TxHigh==1, 1, 0)
+ 
+  
+  #Add values to d.sum table
+  d.sum$S.Tx.alive[which(d.sum$Species==Sp & d.sum$Treatment==Tx)] <- d.temp.PS$alive[i]
+  d.sum$S.Tx.dead[which(d.sum$Species==Sp & d.sum$Treatment==Tx)]  <- d.temp.PS$dead[i]
+  d.sum$S.C.alive[which(d.sum$Species==Sp & d.sum$Treatment==Tx)]  <- Cs$alive
+  d.sum$S.C.dead[which(d.sum$Species==Sp & d.sum$Treatment==Tx)]  <- Cs$dead
+  d.sum$S.pval[which(d.sum$Species==Sp & d.sum$Treatment==Tx)]  <- p
+  d.sum$TxMoreRes.S[which(d.sum$Species==Sp & d.sum$Treatment==Tx)]  <- TxMoreRes
+}
+
+
+d.sum$OrgAffected <- ifelse(d.sum$TxMoreRes.PW==1 | d.sum$TxMoreRes.DtP==1 | d.sum$TxMoreRes.S==1, 1, 0)
+d.sum <- mutate(d.sum, NumEffects=TxMoreRes.PW + TxMoreRes.DtP + TxMoreRes.S)
+
+
+#Now adding in fungi
+d.temp.f <- filter(d.fungi2, Treatment != "DMSO" & Treatment !="Broth" & Treatment != "Captan")
+
+#randomize data
+d.temp.f <- d.temp.f %>% 
+  group_by(Fungi) %>% 
+  mutate(dAbs.ST = dAbs.ST[sample(row_number())]) %>%
+  ungroup()
+
+d.sum.f <- d.temp.f %>% 
+  group_by(Richness, SD, Treatment, Fungi) %>%
+  summarise(dAbs.avg = mean(dAbs.ST, na.rm=TRUE), dAbs.SD=sd(dAbs.ST, na.rm=TRUE),
+            dAbs.n = sum(!is.na(dAbs.ST))) %>%
+  ungroup()
+
+d.sum.f$dAbs.CI.low <- d.sum.f$dAbs.avg - (1.96*d.sum.f$dAbs.SD/sqrt(d.sum.f$dAbs.n))
+d.sum.f$dAbs.CI.high <- d.sum.f$dAbs.avg + (1.96*d.sum.f$dAbs.SD/sqrt(d.sum.f$dAbs.n))
+
+d.sum.f <- mutate(d.sum.f, OrgAffected=ifelse(dAbs.CI.high < 1, 1, 0))
+d.sum.f <- mutate(d.sum.f, NumEffects=ifelse(dAbs.CI.high < 1, 1, 0))
+                  
+
+colnames(d.sum.f)[4] <- "Species"
+
+
+d.sum.hf <- rbind(d.sum[,c(1:4, 23:24)], d.sum.f[,c(1:4, 10:11)])
+
+
+d.sum2 <- d.sum.hf %>%
+  group_by(Richness, SD, Treatment) %>%
+  summarise(NumOrgAffected=sum(OrgAffected, na.rm=TRUE), 
+            TotEffects=sum(NumEffects, na.rm=TRUE)) %>%
+  ungroup()
+
+m1 <- summary(glm(NumOrgAffected ~ Richness, data=d.sum2))
+
+newrow <- data.frame(run=k, Estimate=coef(m1)[2,1], t=coef(m1)[2,3], p=coef(m1)[2,4])
+rich.sum.null <- rbind(rich.sum.null, newrow)
+
+
+#---Effects of SD on number of effects
+
+m1 <- anova(glm(NumOrgAffected ~ SD, data=d.sum2), test="F")
+m1b <- summary(glm(NumOrgAffected ~ SD -1, data=d.sum2))
+
+
+newrow <- data.frame(run=k, SDL=coef(m1b)[2,1], SDM=coef(m1b)[3,1],
+                     SDH=coef(m1b)[1,1], Fstat=m1[2,5], p=m1[2,6])
+
+SD.sum.null <- rbind(SD.sum.null, newrow)
+
+}
+
+
+hist(rich.sum.null$p)
+
+length(rich.sum.null$p[which(rich.sum.null$p < 0.05)])
+length(rich.sum.null$Estimate[which(rich.sum.null$Estimate < 0 )])
+length(rich.sum.null$Estimate[which(rich.sum.null$Estimate < 0 & rich.sum.null$p < 0.05)])
+length(rich.sum.null$Estimate[which(rich.sum.null$Estimate > 0 & rich.sum.null$p < 0.05)])
+
+
+hist(SD.sum.null$p)
+hist(SD.sum.null$SDL)
+hist(SD.sum.null$SDM)
+hist(SD.sum.null$SDH)
+
+length(SD.sum.null$p[which(SD.sum.null$p < 0.05)])
+length(SD.sum.null$p[which(SD.sum.null$p < 0.05 & SD.sum.null$SDL > SD.sum.null$SDM
+                     & SD.sum.null$SDL > SD.sum.null$SDH)])
+length(SD.sum.null$p[which(SD.sum.null$p < 0.05 & SD.sum.null$SDM > SD.sum.null$SDH
+                           & SD.sum.null$SDM > SD.sum.null$SDL)])
+length(SD.sum.null$p[which(SD.sum.null$p < 0.05 & SD.sum.null$SDH > SD.sum.null$SDM
+                           & SD.sum.null$SDH > SD.sum.null$SDL)])
+
+
+mean(SD.sum.null$SDL, na.rm=TRUE)
+mean(SD.sum.null$SDM, na.rm=TRUE)
+mean(SD.sum.null$SDH, na.rm=TRUE)
+
+#With real data, effect size for L-H is -0.90575
+ef <- SD.sum.null$SDL-SD.sum.null$SDH
+min(ef, na.rm=TRUE)
+length(ef[which(ef < -0.90)]) #3 cases of this magnitude
+
+#with real data, effect size for M-L is 0.97
+ef <- SD.sum.null$SDM-SD.sum.null$SDL
+max(ef, na.rm=TRUE)
+length(ef[which(ef > 0.97)]) #one case of this magnitude
+
+
+save.image("./Outputs/Workspaces/Pred2a-2b_null-models")
+
+
+
+
+#**************************************************************
+
 
 
 
 
 # Most compounds effective against at least one consumer (Prediction 2d) OR NOT (Prediction 3a)----
-
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -2916,7 +3373,9 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Pred2d&3a_IndivComps")
 
 
 
+
 # Effect of compound depends on herbivore identity (Prediction 2e)----
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -2962,7 +3421,9 @@ drop1(m.F.2, test="Chisq")
 
 
 
+
 # One or few compounds sufficient to explain performance (Prediction 3b)----   
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -3018,7 +3479,9 @@ tbl.S9.F <- data.frame(summary(s1.F)$coefficients)
 
 
 
+
 # Little or no variation is explained by specific mixture (Prediction 3c)----
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -3299,7 +3762,9 @@ write.csv(tbl.S10, "./Outputs/Tables/TableS10_Pred3c_TreatmentEffects.csv")
 
 
 
+
 # Supplemental: Effects of evenness and SD on performance----
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -3647,8 +4112,9 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Evenness_Performance")
 
 
 
-# Supplemental: Effects of evenness on number of effects----
 
+# Supplemental: Effects of evenness on number of effects----
+#--------------------
 
 load("./Outputs/Workspaces/StandardizedData")
 
@@ -3790,6 +4256,7 @@ save.image("./Outputs/Workspaces/FinalAnalyses_Evenness_NumEffects")
 
 
 # Supplemental: Molecular weight and bioactivity----
+#--------------------
 
 ##in response to reviews and thinking about whether we can compare 
 #compound bioactivities because they were present in different molar concentrations
