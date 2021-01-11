@@ -1132,7 +1132,7 @@ p5
 d.temp <- means.DtP[which(means.DtP$Species=="Hz" & means.DtP$Richness >1),]
 p6 <- ggplot(d.temp, aes(Richness, exceeds)) +
   geom_jitter(height=0.05, width=0.3, col=pal[2], shape=symb[2], cex=4) +
-  stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
+  #stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
   scale_y_continuous(breaks=c(0, 0.5, 1), labels=c("0","","1"), limits = c(-0.1,1.1)) +
   scale_x_continuous(breaks=c(2,4,6,8,10), labels=c("2","4","6", "8", "10")) +
   labs(subtitle="(F)") +
@@ -1146,7 +1146,7 @@ p6
 d.temp <- means.DtP[which(means.DtP$Species=="Px" & means.DtP$Richness >1),]
 p7 <- ggplot(d.temp, aes(Richness, exceeds)) +
   geom_jitter(height=0.05, width=0.3, col=pal[3], shape=symb[3], cex=4) +
-  stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
+  #stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
   scale_y_continuous(breaks=c(0, 0.5, 1), labels=c("0","","1"), limits = c(-0.1,1.1)) +
   scale_x_continuous(breaks=c(2,4,6,8,10), labels=c("2","4","6", "8", "10")) +
   labs(subtitle="(G)") +
@@ -1214,6 +1214,7 @@ p11
 d.temp <- S[which(S$Species=="Sf" & S$Richness >1),]
 p12 <- ggplot(d.temp, aes(Richness, exceeds)) +
   geom_jitter(height=0.05, width=0.3, col=pal[4], shape=symb[4], cex=4) +
+  stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
   scale_y_continuous(breaks=c(0, 0.5, 1), labels=c("0","","1"), limits = c(-0.1,1.1)) +
   scale_x_continuous(breaks=c(2,4,6,8,10), labels=c("2","4","6", "8", "10")) +
   labs(subtitle="(L)") +
@@ -1256,7 +1257,7 @@ p14
 d.temp <- means.F[which(means.F$Fungi=="Penicillium" & means.F$Richness >1),]
 p15 <- ggplot(d.temp, aes(Richness, exceeds)) +
   geom_jitter(height=0.05, width=0.3, col=pal[3], shape=symb[3], cex=4) +
-  stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
+  #stat_smooth(method="glm", method.args = list(family = "binomial"), col="#6B244C", aes(group=1)) +
   scale_y_continuous(breaks=c(0, 0.5, 1), labels=c("0","","1"), limits = c(-0.1,1.1)) +
   scale_x_continuous(breaks=c(2,4,6,8,10), labels=c("2","4","6", "8", "10")) +
   labs(subtitle="(O)") +
