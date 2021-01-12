@@ -13,10 +13,8 @@ show_col(viridis_pal()(20))
 viridis_pal()(8)
 viridis_pal()(4)
 show_col(viridis_pal()(3))
-show_col(ocean.curl(20))
 
 #pal colors
-pal.bands(ocean.curl)
 pal.bands(viridis)
 
 #order of levels for Species will be Cp, Hz, Px, Sf
@@ -770,7 +768,7 @@ load("./Outputs/Workspaces/FinalAnalyses_Pred1d_synergy")
 
 #Only case where we found any potential effects was a marginal negative effect of richness
 #on Zdiff in Px pupal weights. This would indicate antagonism, or at least decreasing
-#synergy with increasing richness
+#synergy with increasing richness. 
 
 summary(lm(diff~ Richness, data=Zs.PW[which(Zs.PW$Species=="Px" & Zs.PW$Richness !=1),]))  #marginal antagonism
 
@@ -797,7 +795,8 @@ p
 
 
 
-#Big composite plot of significant and non-significant relationships
+#Big composite plot of all relationships; not showing any trendlines in this fig
+#since the only effect (for Px above) is marginal 
 
 d.temp <- Zs.PW[which(Zs.PW$Species=="Cp" & Zs.PW$Richness !=1),]
 p1 <- ggplot(d.temp, aes(x=Richness, y=diff)) +
@@ -831,7 +830,7 @@ d.temp <- Zs.PW[which(Zs.PW$Species=="Px" & Zs.PW$Richness !=1),]
 p3 <- ggplot(d.temp, aes(x=Richness, y=diff)) +
   geom_jitter(width=0.03, cex=4, aes(shape=CI.overlap, col=Species)) +
   geom_hline(yintercept=0, color="gray20", lwd=1.2, lty=3) +
-  geom_smooth(method="lm", col=pal[3], aes(group=1))+
+  #geom_smooth(method="lm", col=pal[3], aes(group=1))+
   ylab("") +
   labs(subtitle="(C)") +
   scale_shape_manual(values = c(16,8)) + 
