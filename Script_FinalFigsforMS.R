@@ -727,8 +727,8 @@ p3 <- ggplot(d.temp, aes(x=Richness, y=dAbs.ST)) +
   geom_hline(yintercept=1, color="gray20", lwd=1.2, lty=3) +
   geom_jitter(width=0.3, aes(shape=SD, col=SD), alpha=alpha_p) +
   stat_summary(fun.y = "mean", data=d.temp, aes(color=SD), size = 4, geom = "point") +
-  geom_smooth(data=d.new.l, aes(y = predict), size = 1, col=pal3[1], se=FALSE) +
-  geom_smooth(data=d.new.m, aes(y = predict), size = 1, col=pal3[2], se=FALSE)
+  geom_smooth(data=d.new.l, aes(y = predict), size = 1, col=pal3[1], se=FALSE) 
+  #geom_smooth(data=d.new.m, aes(y = predict), size = 1, col=pal3[2], se=FALSE)
   #geom_smooth(data=d.new.h, aes(y = predict), size = 1, col=pal3[3], se=FALSE)
 
 p3.b <- p3 + ylab("Growth Rate") + xlab("Richness") +
