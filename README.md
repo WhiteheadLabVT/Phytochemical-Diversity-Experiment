@@ -1,3 +1,6 @@
+![image](https://user-images.githubusercontent.com/39545545/110169804-366cdc80-7dc7-11eb-89ed-47a2c381769c.png)
+
+
 # Phytochemical-Diversity-Experiment
 
 These data and code are to accompany the manuscript: “Interaction diversity explains the maintenance of phytochemical diversity”
