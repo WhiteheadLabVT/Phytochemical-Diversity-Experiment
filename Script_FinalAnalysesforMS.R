@@ -8,7 +8,7 @@ library(stringr)
 library(ggplot2)
 library(tidyr)
 library(MASS) #for negative binomial GLMs in Pred 2a/2b and stepwise model selection in Pred 3b
-#library(sjstats) #for ICC (intraclass correlation coefficient) calcs
+
 
 
 ##Data standardization must be run first and workspace saved. After that, all other
@@ -457,7 +457,7 @@ summary(m2.Hz.Surv)
 #Tukey post-hoc for SD levels
 m2.T <- glht(m2.Hz.Surv, linfct=mcp(SD="Tukey"))
 summary(m2.T)
-cld(m2.T, level = 0.05) #lower survival on Med SD
+cld(m2.T, level = 0.05) 
 plot(d.temp$PropSurv ~ d.temp$SD)
 
 
@@ -1978,8 +1978,9 @@ means.PW <- d.temp %>%
   group_by(Species, Treatment, Richness) %>%
   summarise(avg=mean(Pupal.weight.ST, na.rm=TRUE))
 
-#Need to create a 0/1 variable that indicates whether the mixture is more effective than the most
-#effective singleton in that mixture.
+#Need to create a 0/1 variable that indicates whether the mixture is more effective than 
+#the mean of all singletons in the mix.
+
 means.PW$exceeds <- NA
 
 for(i in 1:length(means.PW$Species)){
@@ -2007,7 +2008,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 #For Sf
 d.temp <- means.PW[which(means.PW$Species=="Sf" & means.PW$Richness>1),]
@@ -2018,7 +2019,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #For Px
@@ -2030,7 +2031,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #for Cp
@@ -2042,7 +2043,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #Add stats to summary table
@@ -2114,7 +2115,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #For Sf
@@ -2126,7 +2127,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 
@@ -2139,7 +2140,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #for Cp
@@ -2151,7 +2152,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #Add stats to summary table
@@ -2221,7 +2222,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #For Sf
@@ -2233,7 +2234,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 
@@ -2247,7 +2248,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #for Cp
@@ -2259,7 +2260,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #Add stats to summary table
@@ -2336,7 +2337,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 #For Collet
 d.temp <- means.F[which(means.F$Fungi=="Collet" & means.F$Richness>1),]
@@ -2347,7 +2348,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #For Sclerotinia
@@ -2359,7 +2360,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 
 #for Penicillium
@@ -2371,7 +2372,7 @@ ggplot(d.temp, aes(Richness, exceeds)) +
   stat_smooth(method="loess", formula=y~x,
               alpha=0.2, size=2) +
   geom_point(position=position_jitter(height=0.03, width=0.2)) +
-  xlab("Richness") + ylab("Probability More Effective \n Than Best Singleton")
+  xlab("Richness") + ylab("Probability More Effective \n Than Mean Singleton")
 
 #significant negative effect of richness on probability
 
@@ -3160,7 +3161,7 @@ max(ef, na.rm=TRUE)
 length(ef[which(ef > 0.97)]) #one case of this magnitude
 
 
-save.image("./Outputs/Workspaces/Pred2a-2b_null-models")
+save.image("./Outputs/Workspaces/FinalAnalyses_Pred2a-2b_null-models")
 
 
 
